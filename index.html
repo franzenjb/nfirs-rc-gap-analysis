@@ -9,6 +9,9 @@
     <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
     <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
     
+    <!-- Load API key from config (DO NOT COMMIT config.js) -->
+    <script src='config.js'></script>
+    
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
@@ -338,7 +341,8 @@
 
     <script>
         // Initialize Mapbox
-        mapboxgl.accessToken = 'pk.eyJ1IjoiZnJhbnplbmpiIiwiYSI6ImNsZzA5dm96MzA2MmgzcG9kbWJhOW82cG0ifQ.DhlwKKIg4RaGvFllbA_VFg';
+        // Use token from config.js (loaded separately)
+        mapboxgl.accessToken = typeof MAPBOX_TOKEN !== 'undefined' ? MAPBOX_TOKEN : 'YOUR_MAPBOX_TOKEN_HERE';
         
         // Sample data for New Hampshire cities
         const nhCities = {

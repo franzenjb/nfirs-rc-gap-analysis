@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArcGIS-Style NFIRS/RC Gap Analysis | Full GIS Functionality</title>
+    
+    <!-- Leaflet for mapping (no API key needed) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Leaflet plugins for advanced features -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    
+    <!-- Heatmap plugin -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+        }
+        
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            max-width: 350px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .layer-control {
+            margin-bottom: 15px;
+        }
+        
+        .layer-control label {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .layer-control label:hover {
+            background: #f3f4f6;
+        }
+        
+        .layer-control input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+        }
+        
+        .color-indicator {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .stats-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+        }
+        
+        .time-slider-container {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            width: 400px;
+        }
+        
+        .time-slider {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 6px;
+            background: #e5e7eb;
+            outline: none;
+            border-radius: 3px;
+        }
+        
+        .time-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .popup-content {
+            min-width: 250px;
+        }
+        
+        .popup-content h3 {
+            margin: 0 0 10px 0;
+            color: #1f2937;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .popup-content .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .popup-content .category-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .header-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <!-- Header Panel -->
+    <div class="header-panel">
+        <h1 class="text-2xl font-bold gradient-text">NFIRS/RC Gap Analysis</h1>
+        <p class="text-gray-600 text-sm mt-1">ArcGIS-Style Interactive Map</p>
+    </div>
+    
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <h3 class="font-bold text-lg mb-4">Layer Controls</h3>
+        
+        <!-- Data Layers -->
+        <div class="mb-4">
+            <h4 class="font-semibold text-sm text-gray-700 mb-2">Data Layers</h4>
+            <div class="layer-control">
+                <label>
+                    <input type="checkbox" id="perfectMatch" checked onchange="toggleLayer('perfectMatch')">
+                    <span class="color-indicator" style="background: #10B981;"></span>
+                    Perfect Match (100%)
+                </label>
+            </div>
+            <div class="layer-control">
+                <label>
+                    <input type="checkbox" id="partialMatch" checked onchange="toggleLayer('partialMatch')">
+                    <span class="color-indicator" style="background: #F59E0B;"></span>
+                    Partial Match (50-99%)
+                </label>
+            </div>
+            <div class="layer-control">
+                <label>
+                    <input type="checkbox" id="poorMatch" checked onchange="toggleLayer('poorMatch')">
+                    <span class="color-indicator" style="background: #F97316;"></span>
+                    Poor Match (<50%)
+                </label>
+            </div>
+            <div class="layer-control">
+                <label>
+                    <input type="checkbox" id="nfirsOnly" checked onchange="toggleLayer('nfirsOnly')">
+                    <span class="color-indicator" style="background: #EF4444;"></span>
+                    NFIRS Only (No RC)
+                </label>
+            </div>
+            <div class="layer-control">
+                <label>
+                    <input type="checkbox" id="rcOnly" checked onchange="toggleLayer('rcOnly')">
+                    <span class="color-indicator" style="background: #3B82F6;"></span>
+                    RC Only (No NFIRS)
+                </label>
+            </div>
+        </div>
+        
+        <!-- Analysis Layers -->
+        <div class="mb-4">
+            <h4 class="font-semibold text-sm text-gray-700 mb-2">Analysis Layers</h4>
+            <div class="layer-control">
+                <label>
+                    <input type="checkbox" id="heatmap" onchange="toggleHeatmap()">
+                    <i class="fas fa-fire text-red-500 mr-2"></i>
+                    Gap Severity Heatmap
+                </label>
+            </div>
+            <div class="layer-control">
+                <label>
+                    <input type="checkbox" id="clustering" checked onchange="toggleClustering()">
+                    <i class="fas fa-layer-group text-purple-500 mr-2"></i>
+                    Cluster Analysis
+                </label>
+            </div>
+        </div>
+        
+        <!-- Filters -->
+        <div class="mb-4">
+            <h4 class="font-semibold text-sm text-gray-700 mb-2">Filters</h4>
+            <div class="mb-2">
+                <label class="text-xs text-gray-600">Min Population:</label>
+                <input type="range" min="0" max="100000" value="0" id="populationFilter" class="w-full" onchange="filterByPopulation(this.value)">
+                <span id="popValue" class="text-xs text-gray-600">0</span>
+            </div>
+            <div class="mb-2">
+                <label class="text-xs text-gray-600">Min Gap Count:</label>
+                <input type="range" min="0" max="50" value="0" id="gapFilter" class="w-full" onchange="filterByGap(this.value)">
+                <span id="gapValue" class="text-xs text-gray-600">0</span>
+            </div>
+        </div>
+        
+        <!-- Export Options -->
+        <div class="border-t pt-4">
+            <h4 class="font-semibold text-sm text-gray-700 mb-2">Export Data</h4>
+            <button onclick="exportData('csv')" class="w-full bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 mb-2">
+                <i class="fas fa-file-csv"></i> Export CSV
+            </button>
+            <button onclick="exportData('geojson')" class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                <i class="fas fa-map"></i> Export GeoJSON
+            </button>
+        </div>
+    </div>
+    
+    <!-- Stats Panel -->
+    <div class="stats-panel">
+        <div class="grid grid-cols-7 gap-4 text-center">
+            <div>
+                <p class="text-2xl font-bold text-gray-900">30</p>
+                <p class="text-xs text-gray-600">Cities</p>
+            </div>
+            <div>
+                <p class="text-2xl font-bold text-blue-600">189</p>
+                <p class="text-xs text-gray-600">NFIRS</p>
+            </div>
+            <div>
+                <p class="text-2xl font-bold text-red-600">281</p>
+                <p class="text-xs text-gray-600">RC Care</p>
+            </div>
+            <div>
+                <p class="text-2xl font-bold text-green-600">26</p>
+                <p class="text-xs text-gray-600">Matched</p>
+            </div>
+            <div>
+                <p class="text-2xl font-bold text-orange-600">18.2%</p>
+                <p class="text-xs text-gray-600">Match Rate</p>
+            </div>
+            <div>
+                <p class="text-2xl font-bold text-red-600">297</p>
+                <p class="text-xs text-gray-600">Gaps</p>
+            </div>
+            <div>
+                <p class="text-2xl font-bold text-purple-600" id="visibleCities">30</p>
+                <p class="text-xs text-gray-600">Visible</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Time Slider -->
+    <div class="time-slider-container">
+        <h4 class="font-semibold text-sm text-gray-700 mb-2">Time Period</h4>
+        <input type="range" min="0" max="2" value="2" class="time-slider" id="timeSlider" onchange="updateTimeFilter(this.value)">
+        <div class="flex justify-between text-sm text-gray-600 mt-2">
+            <span>2021</span>
+            <span id="timeLabel" class="font-bold text-purple-600">All Years</span>
+            <span>2022</span>
+        </div>
+    </div>
+
+    <script>
+        // Full dataset
+        const nhFullDataset = [
+            { city: "Manchester", lat: 42.9956, lng: -71.4548, nfirs: 7, rc: 43, matched: 1, population: 115644, year2021: {nfirs: 3, rc: 20}, year2022: {nfirs: 4, rc: 23} },
+            { city: "Nashua", lat: 42.7654, lng: -71.4676, nfirs: 8, rc: 39, matched: 2, population: 91322, year2021: {nfirs: 4, rc: 18}, year2022: {nfirs: 4, rc: 21} },
+            { city: "Concord", lat: 43.2081, lng: -71.5376, nfirs: 6, rc: 28, matched: 1, population: 43976, year2021: {nfirs: 3, rc: 13}, year2022: {nfirs: 3, rc: 15} },
+            { city: "Rochester", lat: 43.3045, lng: -70.9759, nfirs: 2, rc: 24, matched: 0, population: 32492, year2021: {nfirs: 1, rc: 11}, year2022: {nfirs: 1, rc: 13} },
+            { city: "Dover", lat: 43.1979, lng: -70.8737, nfirs: 3, rc: 18, matched: 1, population: 32741, year2021: {nfirs: 2, rc: 8}, year2022: {nfirs: 1, rc: 10} },
+            { city: "Keene", lat: 42.9337, lng: -72.2781, nfirs: 4, rc: 15, matched: 1, population: 23409, year2021: {nfirs: 2, rc: 7}, year2022: {nfirs: 2, rc: 8} },
+            { city: "Portsmouth", lat: 43.0718, lng: -70.7626, nfirs: 5, rc: 14, matched: 2, population: 23011, year2021: {nfirs: 3, rc: 6}, year2022: {nfirs: 2, rc: 8} },
+            { city: "Laconia", lat: 43.5279, lng: -71.4704, nfirs: 3, rc: 12, matched: 1, population: 16871, year2021: {nfirs: 1, rc: 5}, year2022: {nfirs: 2, rc: 7} },
+            { city: "Lebanon", lat: 43.6423, lng: -72.2518, nfirs: 2, rc: 11, matched: 0, population: 14282, year2021: {nfirs: 1, rc: 5}, year2022: {nfirs: 1, rc: 6} },
+            { city: "Claremont", lat: 43.3765, lng: -72.3465, nfirs: 1, rc: 10, matched: 0, population: 12949, year2021: {nfirs: 0, rc: 4}, year2022: {nfirs: 1, rc: 6} },
+            { city: "Berlin", lat: 44.4687, lng: -71.1851, nfirs: 5, rc: 5, matched: 5, population: 10051, year2021: {nfirs: 2, rc: 2}, year2022: {nfirs: 3, rc: 3} },
+            { city: "Allenstown", lat: 43.1476, lng: -71.3831, nfirs: 2, rc: 2, matched: 2, population: 4707, year2021: {nfirs: 1, rc: 1}, year2022: {nfirs: 1, rc: 1} },
+            { city: "Chichester", lat: 43.2523, lng: -71.4001, nfirs: 1, rc: 1, matched: 1, population: 2665, year2021: {nfirs: 0, rc: 0}, year2022: {nfirs: 1, rc: 1} },
+            { city: "Dunbarton", lat: 43.1076, lng: -71.5965, nfirs: 1, rc: 1, matched: 1, population: 3005, year2021: {nfirs: 1, rc: 1}, year2022: {nfirs: 0, rc: 0} },
+            { city: "Salem", lat: 42.7886, lng: -71.2009, nfirs: 18, rc: 0, matched: 0, population: 30089, year2021: {nfirs: 8, rc: 0}, year2022: {nfirs: 10, rc: 0} },
+            { city: "Derry", lat: 42.8806, lng: -71.3273, nfirs: 22, rc: 0, matched: 0, population: 34317, year2021: {nfirs: 10, rc: 0}, year2022: {nfirs: 12, rc: 0} },
+            { city: "Hudson", lat: 42.7651, lng: -71.4398, nfirs: 14, rc: 0, matched: 0, population: 25394, year2021: {nfirs: 6, rc: 0}, year2022: {nfirs: 8, rc: 0} },
+            { city: "Merrimack", lat: 42.8651, lng: -71.4934, nfirs: 16, rc: 0, matched: 0, population: 26632, year2021: {nfirs: 7, rc: 0}, year2022: {nfirs: 9, rc: 0} },
+            { city: "Londonderry", lat: 42.8651, lng: -71.3742, nfirs: 19, rc: 0, matched: 0, population: 25826, year2021: {nfirs: 9, rc: 0}, year2022: {nfirs: 10, rc: 0} },
+            { city: "Bedford", lat: 42.9465, lng: -71.5159, nfirs: 12, rc: 0, matched: 0, population: 23322, year2021: {nfirs: 5, rc: 0}, year2022: {nfirs: 7, rc: 0} },
+            { city: "Somersworth", lat: 43.2618, lng: -70.8656, nfirs: 0, rc: 8, matched: 0, population: 11766, year2021: {nfirs: 0, rc: 3}, year2022: {nfirs: 0, rc: 5} },
+            { city: "Franklin", lat: 43.4445, lng: -71.6473, nfirs: 0, rc: 7, matched: 0, population: 8741, year2021: {nfirs: 0, rc: 3}, year2022: {nfirs: 0, rc: 4} },
+            { city: "Exeter", lat: 42.9814, lng: -70.9478, nfirs: 0, rc: 9, matched: 0, population: 16049, year2021: {nfirs: 0, rc: 4}, year2022: {nfirs: 0, rc: 5} },
+            { city: "Hampton", lat: 42.9376, lng: -70.8389, nfirs: 0, rc: 6, matched: 0, population: 16214, year2021: {nfirs: 0, rc: 2}, year2022: {nfirs: 0, rc: 4} },
+            { city: "Milford", lat: 42.8354, lng: -71.6489, nfirs: 0, rc: 8, matched: 0, population: 16131, year2021: {nfirs: 0, rc: 3}, year2022: {nfirs: 0, rc: 5} },
+            { city: "Windham", lat: 42.8001, lng: -71.3045, nfirs: 10, rc: 3, matched: 1, population: 15817, year2021: {nfirs: 4, rc: 1}, year2022: {nfirs: 6, rc: 2} },
+            { city: "Hooksett", lat: 43.0976, lng: -71.4634, nfirs: 8, rc: 5, matched: 2, population: 14871, year2021: {nfirs: 3, rc: 2}, year2022: {nfirs: 5, rc: 3} },
+            { city: "Goffstown", lat: 43.0204, lng: -71.6003, nfirs: 9, rc: 4, matched: 2, population: 18577, year2021: {nfirs: 4, rc: 2}, year2022: {nfirs: 5, rc: 2} },
+            { city: "Conway", lat: 43.9790, lng: -71.1201, nfirs: 4, rc: 6, matched: 2, population: 9822, year2021: {nfirs: 2, rc: 3}, year2022: {nfirs: 2, rc: 3} },
+            { city: "Plymouth", lat: 43.7573, lng: -71.6881, nfirs: 2, rc: 5, matched: 1, population: 6682, year2021: {nfirs: 1, rc: 2}, year2022: {nfirs: 1, rc: 3} }
+        ];
+
+        let map;
+        let markers = [];
+        let markerCluster;
+        let heatmapLayer;
+        let layerGroups = {
+            perfectMatch: [],
+            partialMatch: [],
+            poorMatch: [],
+            nfirsOnly: [],
+            rcOnly: []
+        };
+        
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([43.5, -71.5], 8);
+            
+            // Add OpenStreetMap tiles (no API key needed!)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Alternative tile providers (all free, no API key):
+            // CartoDB Positron (light)
+            // L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            //     attribution: '© OpenStreetMap contributors © CARTO'
+            // }).addTo(map);
+            
+            // CartoDB Dark Matter (dark)
+            // L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            //     attribution: '© OpenStreetMap contributors © CARTO'
+            // }).addTo(map);
+            
+            // Initialize marker cluster group
+            markerCluster = L.markerClusterGroup({
+                chunkedLoading: true,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: true,
+                zoomToBoundsOnClick: true
+            });
+            
+            // Add all markers
+            addMarkers();
+            
+            // Add marker cluster to map
+            map.addLayer(markerCluster);
+        }
+        
+        function categorizeCity(city) {
+            const matchRate = city.nfirs > 0 ? (city.matched / Math.min(city.nfirs, city.rc)) * 100 : 0;
+            
+            if (city.nfirs === 0 && city.rc > 0) {
+                return { category: 'rcOnly', color: '#3B82F6', label: 'RC Only' };
+            } else if (city.rc === 0 && city.nfirs > 0) {
+                return { category: 'nfirsOnly', color: '#EF4444', label: 'NFIRS Only' };
+            } else if (matchRate === 100) {
+                return { category: 'perfectMatch', color: '#10B981', label: 'Perfect Match' };
+            } else if (matchRate >= 50) {
+                return { category: 'partialMatch', color: '#F59E0B', label: 'Partial Match' };
+            } else {
+                return { category: 'poorMatch', color: '#F97316', label: 'Poor Match' };
+            }
+        }
+        
+        function addMarkers() {
+            nhFullDataset.forEach(city => {
+                const category = categorizeCity(city);
+                const size = Math.sqrt(Math.max(city.nfirs, city.rc)) * 5;
+                const matchRate = city.nfirs > 0 ? ((city.matched / Math.min(city.nfirs, city.rc)) * 100).toFixed(1) : 0;
+                
+                // Create custom icon
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color: ${category.color}; width: ${size}px; height: ${size}px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [size, size],
+                    iconAnchor: [size/2, size/2]
+                });
+                
+                // Create marker
+                const marker = L.marker([city.lat, city.lng], { icon: icon });
+                
+                // Add popup
+                marker.bindPopup(`
+                    <div class="popup-content">
+                        <h3>${city.city}</h3>
+                        <div class="stat-row">
+                            <span>Population:</span>
+                            <strong>${city.population.toLocaleString()}</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>NFIRS:</span>
+                            <strong>${city.nfirs}</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>RC Care:</span>
+                            <strong>${city.rc}</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>Matched:</span>
+                            <strong>${city.matched} (${matchRate}%)</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>Gap Count:</span>
+                            <strong style="color: #DC2626;">${Math.abs(city.nfirs - city.rc)}</strong>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <span class="category-badge" style="background: ${category.color};">
+                                ${category.label}
+                            </span>
+                        </div>
+                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
+                            <div style="font-size: 12px; color: #6b7280;">
+                                <strong>2021:</strong> NFIRS ${city.year2021.nfirs} | RC ${city.year2021.rc}<br>
+                                <strong>2022:</strong> NFIRS ${city.year2022.nfirs} | RC ${city.year2022.rc}
+                            </div>
+                        </div>
+                    </div>
+                `);
+                
+                // Store marker data
+                marker.cityData = city;
+                marker.category = category.category;
+                
+                // Add to appropriate layer group
+                layerGroups[category.category].push(marker);
+                
+                // Add to cluster
+                markerCluster.addLayer(marker);
+                markers.push(marker);
+            });
+        }
+        
+        function toggleLayer(layerName) {
+            const isChecked = document.getElementById(layerName).checked;
+            
+            layerGroups[layerName].forEach(marker => {
+                if (isChecked) {
+                    markerCluster.addLayer(marker);
+                } else {
+                    markerCluster.removeLayer(marker);
+                }
+            });
+            
+            updateVisibleCount();
+        }
+        
+        function toggleHeatmap() {
+            const isChecked = document.getElementById('heatmap').checked;
+            
+            if (isChecked) {
+                // Create heatmap data
+                const heatData = nhFullDataset.map(city => {
+                    const gap = Math.abs(city.nfirs - city.rc);
+                    const intensity = gap / 50; // Normalize
+                    return [city.lat, city.lng, intensity];
+                });
+                
+                heatmapLayer = L.heatLayer(heatData, {
+                    radius: 25,
+                    blur: 15,
+                    maxZoom: 10,
+                    gradient: {
+                        0.0: 'green',
+                        0.3: 'yellow',
+                        0.6: 'orange',
+                        0.8: 'red',
+                        1.0: 'darkred'
+                    }
+                }).addTo(map);
+            } else {
+                if (heatmapLayer) {
+                    map.removeLayer(heatmapLayer);
+                }
+            }
+        }
+        
+        function toggleClustering() {
+            const isChecked = document.getElementById('clustering').checked;
+            
+            if (isChecked) {
+                map.addLayer(markerCluster);
+            } else {
+                map.removeLayer(markerCluster);
+                // Add markers directly to map
+                markers.forEach(marker => {
+                    if (document.getElementById(marker.category).checked) {
+                        marker.addTo(map);
+                    }
+                });
+            }
+        }
+        
+        function filterByPopulation(minPop) {
+            document.getElementById('popValue').textContent = parseInt(minPop).toLocaleString();
+            
+            markers.forEach(marker => {
+                if (marker.cityData.population < minPop) {
+                    markerCluster.removeLayer(marker);
+                } else if (document.getElementById(marker.category).checked) {
+                    markerCluster.addLayer(marker);
+                }
+            });
+            
+            updateVisibleCount();
+        }
+        
+        function filterByGap(minGap) {
+            document.getElementById('gapValue').textContent = minGap;
+            
+            markers.forEach(marker => {
+                const gap = Math.abs(marker.cityData.nfirs - marker.cityData.rc);
+                if (gap < minGap) {
+                    markerCluster.removeLayer(marker);
+                } else if (document.getElementById(marker.category).checked) {
+                    markerCluster.addLayer(marker);
+                }
+            });
+            
+            updateVisibleCount();
+        }
+        
+        function updateTimeFilter(value) {
+            const labels = ['2021', 'All Years', '2022'];
+            document.getElementById('timeLabel').textContent = labels[value];
+            
+            // Update markers based on selected year
+            markers.forEach(marker => {
+                let show = true;
+                const city = marker.cityData;
+                
+                if (value == 0) { // 2021 only
+                    show = city.year2021.nfirs > 0 || city.year2021.rc > 0;
+                } else if (value == 2) { // 2022 only
+                    show = city.year2022.nfirs > 0 || city.year2022.rc > 0;
+                }
+                
+                if (show && document.getElementById(marker.category).checked) {
+                    markerCluster.addLayer(marker);
+                } else {
+                    markerCluster.removeLayer(marker);
+                }
+            });
+            
+            updateVisibleCount();
+        }
+        
+        function updateVisibleCount() {
+            let count = 0;
+            markers.forEach(marker => {
+                if (markerCluster.hasLayer(marker)) {
+                    count++;
+                }
+            });
+            document.getElementById('visibleCities').textContent = count;
+        }
+        
+        function exportData(format) {
+            if (format === 'csv') {
+                const headers = ['City', 'Latitude', 'Longitude', 'Population', 'NFIRS', 'RC_Care', 'Matched', 'Match_Rate', 'Category', 'Gap_Count'];
+                const rows = nhFullDataset.map(city => {
+                    const category = categorizeCity(city);
+                    const matchRate = city.nfirs > 0 ? ((city.matched / Math.min(city.nfirs, city.rc)) * 100).toFixed(1) : 0;
+                    return [
+                        city.city, city.lat, city.lng, city.population,
+                        city.nfirs, city.rc, city.matched, matchRate,
+                        category.label, Math.abs(city.nfirs - city.rc)
+                    ];
+                });
+                
+                const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+                downloadFile(csvContent, 'nh_gap_analysis.csv', 'text/csv');
+                
+            } else if (format === 'geojson') {
+                const features = nhFullDataset.map(city => {
+                    const category = categorizeCity(city);
+                    return {
+                        type: "Feature",
+                        properties: {
+                            name: city.city,
+                            nfirs: city.nfirs,
+                            rc: city.rc,
+                            matched: city.matched,
+                            population: city.population,
+                            category: category.label,
+                            gap: Math.abs(city.nfirs - city.rc)
+                        },
+                        geometry: {
+                            type: "Point",
+                            coordinates: [city.lng, city.lat]
+                        }
+                    };
+                });
+                
+                const geoJSON = {
+                    type: "FeatureCollection",
+                    features: features
+                };
+                
+                downloadFile(JSON.stringify(geoJSON, null, 2), 'nh_gap_analysis.geojson', 'application/json');
+            }
+        }
+        
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type: type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // Initialize map on load
+        window.addEventListener('load', initMap);
+    </script>
+</body>
+</html>

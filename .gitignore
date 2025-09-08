@@ -1,0 +1,26 @@
+# Environment variables - NEVER commit these
+.env
+.env.local
+.env.*.local
+
+# API Keys
+*.key
+*-key.txt
+api-keys.json
+
+# Node modules
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Mapbox config with API key
+config.js
