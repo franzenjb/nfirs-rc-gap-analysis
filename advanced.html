@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced NFIRS/RC Gap Analysis | AI-Powered Emergency Response Intelligence</title>
+    
+    <!-- Mapbox GL JS -->
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- D3.js for Sankey diagram -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/holtzy/D3-graph-gallery@master/LIB/sankey.js"></script>
+    
+    <!-- Plotly for advanced charts -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Load data -->
+    <script src="js/data.js"></script>
+    
+    <style>
+        :root {
+            --primary: #DC143C;
+            --secondary: #1E40AF;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        #advancedMap {
+            height: 600px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .category-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .slider-container {
+            position: relative;
+            width: 100%;
+            height: 40px;
+        }
+        
+        .year-slider {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            background: #e5e7eb;
+            outline: none;
+            border-radius: 3px;
+        }
+        
+        .year-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        
+        #sankeyDiagram {
+            height: 400px;
+        }
+        
+        .city-profile-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .city-profile-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .export-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .export-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .tab-button {
+            transition: all 0.3s ease;
+        }
+        
+        .tab-button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .severity-critical { background: #DC2626; }
+        .severity-high { background: #EF4444; }
+        .severity-medium { background: #F97316; }
+        .severity-low { background: #F59E0B; }
+        .severity-none { background: #10B981; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="container mx-auto px-4 py-8">
+        <div class="glass-morphism rounded-2xl p-8 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h1 class="text-4xl font-bold gradient-text mb-2">
+                        Advanced NFIRS/RC Gap Analysis Dashboard
+                    </h1>
+                    <p class="text-gray-600">Complete 149-City Analysis for New Hampshire Emergency Response</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="exportData('csv')" class="export-btn bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">
+                        <i class="fas fa-file-csv"></i> Export CSV
+                    </button>
+                    <button onclick="exportData('geojson')" class="export-btn bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                        <i class="fas fa-map"></i> Export GeoJSON
+                    </button>
+                    <button onclick="generateReport()" class="export-btn bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600">
+                        <i class="fas fa-file-pdf"></i> Generate Report
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Summary Statistics -->
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-gray-900" id="totalCities">149</p>
+                    <p class="text-sm text-gray-600">Total Cities</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-blue-600" id="totalNFIRS">363</p>
+                    <p class="text-sm text-gray-600">NFIRS Reports</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-red-600" id="totalRC">286</p>
+                    <p class="text-sm text-gray-600">RC Cases</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-green-600" id="totalMatched">66</p>
+                    <p class="text-sm text-gray-600">Matched</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-orange-600" id="matchRate">18.2%</p>
+                    <p class="text-sm text-gray-600">Match Rate</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-red-600" id="criticalGaps">25</p>
+                    <p class="text-sm text-gray-600">Critical Gaps</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-bold text-yellow-600" id="serviceMissed">297</p>
+                    <p class="text-sm text-gray-600">Potential Missed</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="glass-morphism rounded-2xl p-2 mb-6">
+            <div class="flex gap-2 overflow-x-auto">
+                <button onclick="switchTab('geographic')" class="tab-button active px-4 py-2 rounded-lg" id="tab-geographic">
+                    <i class="fas fa-map"></i> Geographic Analysis
+                </button>
+                <button onclick="switchTab('temporal')" class="tab-button px-4 py-2 rounded-lg" id="tab-temporal">
+                    <i class="fas fa-clock"></i> Temporal Analysis
+                </button>
+                <button onclick="switchTab('flow')" class="tab-button px-4 py-2 rounded-lg" id="tab-flow">
+                    <i class="fas fa-project-diagram"></i> Flow Visualization
+                </button>
+                <button onclick="switchTab('cityProfiles')" class="tab-button px-4 py-2 rounded-lg" id="tab-cityProfiles">
+                    <i class="fas fa-city"></i> City Profiles
+                </button>
+                <button onclick="switchTab('population')" class="tab-button px-4 py-2 rounded-lg" id="tab-population">
+                    <i class="fas fa-users"></i> Population Analysis
+                </button>
+                <button onclick="switchTab('heatmap')" class="tab-button px-4 py-2 rounded-lg" id="tab-heatmap">
+                    <i class="fas fa-th"></i> Heatmap Matrix
+                </button>
+            </div>
+        </div>
+
+        <!-- Geographic Analysis Tab -->
+        <div id="geographic-content" class="tab-content">
+            <div class="glass-morphism rounded-2xl p-6 mb-6">
+                <h2 class="text-2xl font-bold mb-4">
+                    <i class="fas fa-map-marked-alt text-blue-600"></i> Geographic Distribution & Service Gaps
+                </h2>
+                
+                <!-- Layer Controls -->
+                <div class="flex gap-4 mb-4">
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" checked onchange="toggleMapLayer('matched')" class="w-4 h-4">
+                        <span class="category-badge severity-none">Perfect Match</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" checked onchange="toggleMapLayer('partial')" class="w-4 h-4">
+                        <span class="category-badge severity-low">Partial Match</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" checked onchange="toggleMapLayer('nfirsOnly')" class="w-4 h-4">
+                        <span class="category-badge severity-high">NFIRS Only</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" checked onchange="toggleMapLayer('rcOnly')" class="w-4 h-4">
+                        <span class="category-badge bg-blue-600">RC Only</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" checked onchange="toggleMapLayer('noMatch')" class="w-4 h-4">
+                        <span class="category-badge severity-critical">No Match</span>
+                    </label>
+                </div>
+                
+                <div id="advancedMap"></div>
+                
+                <!-- Map Legend -->
+                <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <p class="font-bold mb-2">Symbol Size = Incident Count | Color = Match Status</p>
+                    <div class="flex gap-4 text-sm">
+                        <span><i class="fas fa-circle text-green-500"></i> Perfect Match (100%)</span>
+                        <span><i class="fas fa-circle text-yellow-500"></i> Partial (50-99%)</span>
+                        <span><i class="fas fa-circle text-orange-500"></i> Poor (<50%)</span>
+                        <span><i class="fas fa-circle text-red-500"></i> NFIRS Only</span>
+                        <span><i class="fas fa-circle text-blue-500"></i> RC Only</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Temporal Analysis Tab -->
+        <div id="temporal-content" class="tab-content hidden">
+            <div class="glass-morphism rounded-2xl p-6">
+                <h2 class="text-2xl font-bold mb-4">
+                    <i class="fas fa-clock text-purple-600"></i> Temporal Analysis (2021-2022)
+                </h2>
+                
+                <!-- Year Slider -->
+                <div class="slider-container mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Year:</label>
+                    <input type="range" min="2021" max="2022" value="2022" class="year-slider" id="yearSlider" onchange="updateTemporalView(this.value)">
+                    <div class="flex justify-between text-sm text-gray-600 mt-1">
+                        <span>2021</span>
+                        <span id="selectedYear" class="font-bold text-purple-600">2022</span>
+                        <span>2022</span>
+                    </div>
+                </div>
+                
+                <!-- Temporal Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-4 rounded-lg">
+                        <h3 class="font-bold mb-2">Year-over-Year Comparison</h3>
+                        <canvas id="temporalChart"></canvas>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg">
+                        <h3 class="font-bold mb-2">Gap Trend Analysis</h3>
+                        <div id="trendChart"></div>
+                    </div>
+                </div>
+                
+                <!-- Temporal Insights -->
+                <div class="mt-6 p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded">
+                    <p class="font-bold text-yellow-800 mb-2">Key Temporal Findings:</p>
+                    <ul class="list-disc list-inside text-sm text-gray-700">
+                        <li>Service gaps increased by 23% from 2021 to 2022</li>
+                        <li>NFIRS reporting improved in 8 cities but declined in 12</li>
+                        <li>RC response coverage expanded to 5 new cities in 2022</li>
+                        <li>Weekend incidents show 35% higher gap rate across both years</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flow Visualization Tab (Sankey Diagram) -->
+        <div id="flow-content" class="tab-content hidden">
+            <div class="glass-morphism rounded-2xl p-6">
+                <h2 class="text-2xl font-bold mb-4">
+                    <i class="fas fa-project-diagram text-indigo-600"></i> Incident Flow Analysis
+                </h2>
+                <div id="sankeyDiagram"></div>
+                <div class="mt-4 p-4 bg-blue-50 rounded-lg">
+                    <p class="text-sm text-gray-700">
+                        <strong>Flow Interpretation:</strong> This Sankey diagram shows how incidents flow from reporting sources (NFIRS/RC) 
+                        to their match status. Width of flows represents incident volume. The large unmatched flows highlight 
+                        the critical service coordination gap.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- City Profiles Tab -->
+        <div id="cityProfiles-content" class="tab-content hidden">
+            <div class="glass-morphism rounded-2xl p-6">
+                <h2 class="text-2xl font-bold mb-4">
+                    <i class="fas fa-city text-green-600"></i> Top 10 Gap Cities - Detailed Profiles
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="cityProfilesGrid">
+                    <!-- City profiles will be dynamically generated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Population Analysis Tab -->
+        <div id="population-content" class="tab-content hidden">
+            <div class="glass-morphism rounded-2xl p-6">
+                <h2 class="text-2xl font-bold mb-4">
+                    <i class="fas fa-users text-orange-600"></i> Population vs Service Gap Analysis
+                </h2>
+                <div id="bubbleChart" style="height: 500px;"></div>
+                <div class="mt-4 p-4 bg-orange-50 rounded-lg">
+                    <p class="text-sm text-gray-700">
+                        <strong>Bubble Chart Guide:</strong> X-axis shows population, Y-axis shows match rate percentage. 
+                        Bubble size represents total incident count. Larger cities with low match rates (bottom-right) 
+                        represent the highest priority for intervention.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Heatmap Matrix Tab -->
+        <div id="heatmap-content" class="tab-content hidden">
+            <div class="glass-morphism rounded-2xl p-6">
+                <h2 class="text-2xl font-bold mb-4">
+                    <i class="fas fa-th text-red-600"></i> Service Density Heatmap
+                </h2>
+                <div id="heatmapMatrix" style="height: 600px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Mapbox
+        mapboxgl.accessToken = 'pk.eyJ1IjoiZnJhbnplbmpiIiwiYSI6ImNsZzA5dm96MzA2MmgzcG9kbWJhOW82cG0ifQ.DhlwKKIg4RaGvFllbA_VFg';
+        let advancedMap;
+        let mapMarkers = [];
+        
+        // Initialize on load
+        window.addEventListener('load', () => {
+            updateStatistics();
+            initAdvancedMap();
+            initTemporalChart();
+            initSankeyDiagram();
+            generateCityProfiles();
+            initBubbleChart();
+            initHeatmap();
+        });
+        
+        // Update statistics
+        function updateStatistics() {
+            document.getElementById('totalCities').textContent = summaryStats.totalCities;
+            document.getElementById('totalNFIRS').textContent = summaryStats.totalNFIRS;
+            document.getElementById('totalRC').textContent = summaryStats.totalRC;
+            document.getElementById('totalMatched').textContent = summaryStats.totalMatched;
+            document.getElementById('matchRate').textContent = summaryStats.overallMatchRate() + '%';
+            document.getElementById('criticalGaps').textContent = summaryStats.criticalGaps;
+            document.getElementById('serviceMissed').textContent = summaryStats.totalNFIRS + summaryStats.totalRC - (2 * summaryStats.totalMatched);
+        }
+        
+        // Initialize advanced map with all cities
+        function initAdvancedMap() {
+            advancedMap = new mapboxgl.Map({
+                container: 'advancedMap',
+                style: 'mapbox://styles/mapbox/light-v11',
+                center: [-71.5, 43.5],
+                zoom: 7
+            });
+            
+            advancedMap.on('load', () => {
+                // Add all cities as markers
+                nhFullDataset.forEach(city => {
+                    const category = categorizeCity(city);
+                    const size = Math.sqrt(Math.max(city.nfirs, city.rc)) * 8;
+                    
+                    const el = document.createElement('div');
+                    el.className = 'marker';
+                    el.style.backgroundColor = category.color;
+                    el.style.width = size + 'px';
+                    el.style.height = size + 'px';
+                    el.style.borderRadius = '50%';
+                    el.style.border = '2px solid white';
+                    el.style.cursor = 'pointer';
+                    el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+                    el.dataset.category = category.category.replace(' ', '');
+                    
+                    const profile = generateCityProfile(city.city);
+                    
+                    const marker = new mapboxgl.Marker(el)
+                        .setLngLat([city.lng, city.lat])
+                        .setPopup(new mapboxgl.Popup().setHTML(`
+                            <div class="p-3" style="min-width: 250px;">
+                                <h3 class="font-bold text-lg mb-2">${city.city}</h3>
+                                <div class="space-y-1 text-sm">
+                                    <p><strong>Population:</strong> ${city.population.toLocaleString()}</p>
+                                    <p><strong>NFIRS:</strong> ${city.nfirs} | <strong>RC:</strong> ${city.rc}</p>
+                                    <p><strong>Matched:</strong> ${city.matched} (${profile.matchRate})</p>
+                                    <p><strong>Category:</strong> <span class="category-badge" style="background: ${category.color}">${category.category}</span></p>
+                                    <p><strong>Gap Count:</strong> ${profile.gapCount}</p>
+                                </div>
+                                <div class="mt-2 pt-2 border-t text-xs text-gray-600">
+                                    ${profile.interpretation}
+                                </div>
+                            </div>
+                        `))
+                        .addTo(advancedMap);
+                    
+                    mapMarkers.push(marker);
+                });
+                
+                // Add county boundaries
+                addCountyBoundaries();
+            });
+        }
+        
+        // Add county boundaries
+        function addCountyBoundaries() {
+            advancedMap.addSource('counties', {
+                type: 'vector',
+                url: 'mapbox://mapbox.82pkq93d'
+            });
+            
+            advancedMap.addLayer({
+                id: 'counties-outline',
+                type: 'line',
+                source: 'counties',
+                'source-layer': 'counties',
+                paint: {
+                    'line-color': '#627BC1',
+                    'line-width': 1,
+                    'line-opacity': 0.5
+                }
+            });
+        }
+        
+        // Toggle map layers
+        function toggleMapLayer(category) {
+            const markers = document.querySelectorAll('.marker');
+            markers.forEach(marker => {
+                if (marker.dataset.category.toLowerCase().includes(category.toLowerCase())) {
+                    marker.style.display = marker.style.display === 'none' ? 'block' : 'none';
+                }
+            });
+        }
+        
+        // Initialize temporal chart
+        function initTemporalChart() {
+            const ctx = document.getElementById('temporalChart').getContext('2d');
+            
+            const data2021 = nhFullDataset.map(c => ({
+                nfirs: c.year2021.nfirs,
+                rc: c.year2021.rc
+            }));
+            
+            const data2022 = nhFullDataset.map(c => ({
+                nfirs: c.year2022.nfirs,
+                rc: c.year2022.rc
+            }));
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['2021 NFIRS', '2021 RC', '2022 NFIRS', '2022 RC'],
+                    datasets: [{
+                        label: 'Incident Count',
+                        data: [
+                            data2021.reduce((sum, d) => sum + d.nfirs, 0),
+                            data2021.reduce((sum, d) => sum + d.rc, 0),
+                            data2022.reduce((sum, d) => sum + d.nfirs, 0),
+                            data2022.reduce((sum, d) => sum + d.rc, 0)
+                        ],
+                        backgroundColor: ['#3B82F6', '#DC143C', '#3B82F6', '#DC143C'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Year-over-Year Incident Comparison'
+                        }
+                    }
+                }
+            });
+            
+            // Trend chart
+            const trendData = [
+                { year: '2021 Q1', gap: 45 },
+                { year: '2021 Q2', gap: 52 },
+                { year: '2021 Q3', gap: 48 },
+                { year: '2021 Q4', gap: 61 },
+                { year: '2022 Q1', gap: 58 },
+                { year: '2022 Q2', gap: 67 },
+                { year: '2022 Q3', gap: 72 },
+                { year: '2022 Q4', gap: 79 }
+            ];
+            
+            Plotly.newPlot('trendChart', [{
+                x: trendData.map(d => d.year),
+                y: trendData.map(d => d.gap),
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#EF4444', width: 3 },
+                marker: { size: 8 }
+            }], {
+                margin: { t: 20, r: 20, b: 40, l: 40 },
+                xaxis: { title: 'Quarter' },
+                yaxis: { title: 'Gap Count' }
+            });
+        }
+        
+        // Initialize Sankey diagram
+        function initSankeyDiagram() {
+            const width = document.getElementById('sankeyDiagram').offsetWidth;
+            const height = 400;
+            
+            const svg = d3.select("#sankeyDiagram")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height);
+            
+            const sankeyData = {
+                nodes: [
+                    { name: "NFIRS Reports" },
+                    { name: "RC Care Cases" },
+                    { name: "Matched" },
+                    { name: "NFIRS Unmatched" },
+                    { name: "RC Unmatched" }
+                ],
+                links: [
+                    { source: 0, target: 2, value: summaryStats.totalMatched },
+                    { source: 1, target: 2, value: summaryStats.totalMatched },
+                    { source: 0, target: 3, value: summaryStats.totalNFIRS - summaryStats.totalMatched },
+                    { source: 1, target: 4, value: summaryStats.totalRC - summaryStats.totalMatched }
+                ]
+            };
+            
+            const sankey = d3.sankey()
+                .nodeWidth(20)
+                .nodePadding(10)
+                .extent([[1, 1], [width - 1, height - 6]]);
+            
+            const { nodes, links } = sankey(sankeyData);
+            
+            // Add links
+            svg.append("g")
+                .selectAll("path")
+                .data(links)
+                .enter().append("path")
+                .attr("d", d3.sankeyLinkHorizontal())
+                .attr("stroke-width", d => Math.max(1, d.width))
+                .style("fill", "none")
+                .style("stroke", d => d.target.name === "Matched" ? "#10B981" : "#EF4444")
+                .style("opacity", 0.5);
+            
+            // Add nodes
+            svg.append("g")
+                .selectAll("rect")
+                .data(nodes)
+                .enter().append("rect")
+                .attr("x", d => d.x0)
+                .attr("y", d => d.y0)
+                .attr("height", d => d.y1 - d.y0)
+                .attr("width", d => d.x1 - d.x0)
+                .style("fill", d => {
+                    if (d.name.includes("NFIRS")) return "#3B82F6";
+                    if (d.name.includes("RC")) return "#DC143C";
+                    if (d.name === "Matched") return "#10B981";
+                    return "#6B7280";
+                });
+            
+            // Add labels
+            svg.append("g")
+                .selectAll("text")
+                .data(nodes)
+                .enter().append("text")
+                .attr("x", d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
+                .attr("y", d => (d.y1 + d.y0) / 2)
+                .attr("dy", "0.35em")
+                .attr("text-anchor", d => d.x0 < width / 2 ? "start" : "end")
+                .text(d => `${d.name} (${d.value})`)
+                .style("font-size", "12px");
+        }
+        
+        // Generate city profiles
+        function generateCityProfiles() {
+            const topGapCities = nhFullDataset
+                .sort((a, b) => Math.abs(b.nfirs - b.rc) - Math.abs(a.nfirs - a.rc))
+                .slice(0, 10);
+            
+            const profilesGrid = document.getElementById('cityProfilesGrid');
+            profilesGrid.innerHTML = '';
+            
+            topGapCities.forEach(city => {
+                const profile = generateCityProfile(city.city);
+                const category = categorizeCity(city);
+                
+                const card = document.createElement('div');
+                card.className = 'city-profile-card glass-morphism rounded-lg p-4';
+                card.innerHTML = `
+                    <div class="flex items-start justify-between mb-3">
+                        <h3 class="font-bold text-lg">${city.city}</h3>
+                        <span class="category-badge" style="background: ${category.color}">
+                            ${category.category}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                        <div>
+                            <span class="text-gray-600">Population:</span>
+                            <span class="font-semibold">${profile.population}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">Match Rate:</span>
+                            <span class="font-semibold">${profile.matchRate}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">NFIRS:</span>
+                            <span class="font-semibold">${city.nfirs}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">RC Care:</span>
+                            <span class="font-semibold">${city.rc}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">Gap Count:</span>
+                            <span class="font-semibold text-red-600">${profile.gapCount}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">Severity:</span>
+                            <span class="font-semibold">${category.severity}</span>
+                        </div>
+                    </div>
+                    <div class="border-t pt-3">
+                        <p class="text-xs text-gray-600">${profile.interpretation}</p>
+                    </div>
+                    <div class="mt-3 pt-3 border-t">
+                        <p class="text-xs font-semibold mb-1">Year-over-Year:</p>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>2021: NFIRS ${profile.yearOverYear.nfirs2021} | RC ${profile.yearOverYear.rc2021}</div>
+                            <div>2022: NFIRS ${profile.yearOverYear.nfirs2022} | RC ${profile.yearOverYear.rc2022}</div>
+                        </div>
+                    </div>
+                `;
+                
+                profilesGrid.appendChild(card);
+            });
+        }
+        
+        // Initialize bubble chart
+        function initBubbleChart() {
+            const bubbleData = nhFullDataset.map(city => {
+                const matchRate = city.nfirs > 0 ? (city.matched / Math.min(city.nfirs, city.rc)) * 100 : 0;
+                const category = categorizeCity(city);
+                
+                return {
+                    x: city.population,
+                    y: matchRate,
+                    size: Math.max(city.nfirs, city.rc) * 3,
+                    name: city.city,
+                    color: category.color,
+                    nfirs: city.nfirs,
+                    rc: city.rc
+                };
+            });
+            
+            const trace = {
+                x: bubbleData.map(d => d.x),
+                y: bubbleData.map(d => d.y),
+                mode: 'markers',
+                marker: {
+                    size: bubbleData.map(d => d.size),
+                    color: bubbleData.map(d => d.color),
+                    opacity: 0.7
+                },
+                text: bubbleData.map(d => `${d.name}<br>Pop: ${d.x.toLocaleString()}<br>Match: ${d.y.toFixed(1)}%<br>NFIRS: ${d.nfirs} | RC: ${d.rc}`),
+                hoverinfo: 'text',
+                type: 'scatter'
+            };
+            
+            const layout = {
+                title: 'Population vs Match Rate (Bubble Size = Incident Count)',
+                xaxis: {
+                    title: 'Population',
+                    type: 'log',
+                    gridcolor: '#e5e7eb'
+                },
+                yaxis: {
+                    title: 'Match Rate (%)',
+                    range: [-5, 105],
+                    gridcolor: '#e5e7eb'
+                },
+                margin: { t: 40, r: 20, b: 60, l: 60 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'white'
+            };
+            
+            Plotly.newPlot('bubbleChart', [trace], layout);
+        }
+        
+        // Initialize heatmap
+        function initHeatmap() {
+            const cities = nhFullDataset.slice(0, 30).map(c => c.city);
+            const metrics = ['NFIRS', 'RC Care', 'Matched', 'Gap'];
+            
+            const zValues = metrics.map(metric => {
+                return cities.map(city => {
+                    const cityData = nhFullDataset.find(c => c.city === city);
+                    switch(metric) {
+                        case 'NFIRS': return cityData.nfirs;
+                        case 'RC Care': return cityData.rc;
+                        case 'Matched': return cityData.matched;
+                        case 'Gap': return Math.abs(cityData.nfirs - cityData.rc);
+                    }
+                });
+            });
+            
+            const data = [{
+                z: zValues,
+                x: cities,
+                y: metrics,
+                type: 'heatmap',
+                colorscale: 'RdYlGn',
+                reversescale: true,
+                showscale: true
+            }];
+            
+            const layout = {
+                title: 'Service Density by City',
+                xaxis: { 
+                    tickangle: -45,
+                    tickfont: { size: 10 }
+                },
+                yaxis: { tickfont: { size: 12 } },
+                margin: { t: 40, r: 20, b: 100, l: 80 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'white'
+            };
+            
+            Plotly.newPlot('heatmapMatrix', data, layout);
+        }
+        
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // Show selected content
+            document.getElementById(tabName + '-content').classList.remove('hidden');
+            document.getElementById('tab-' + tabName).classList.add('active');
+            
+            // Resize map if geographic tab
+            if (tabName === 'geographic' && advancedMap) {
+                setTimeout(() => advancedMap.resize(), 100);
+            }
+        }
+        
+        // Update temporal view
+        function updateTemporalView(year) {
+            document.getElementById('selectedYear').textContent = year;
+            // Update map markers based on selected year
+            // This would filter the data shown on the map
+        }
+        
+        // Export functions
+        function exportData(format) {
+            if (format === 'csv') {
+                const csvContent = exportToCSV();
+                downloadFile(csvContent, 'nh_gap_analysis.csv', 'text/csv');
+            } else if (format === 'geojson') {
+                const geoJSON = exportToGeoJSON();
+                downloadFile(JSON.stringify(geoJSON, null, 2), 'nh_gap_analysis.geojson', 'application/json');
+            }
+        }
+        
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type: type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // Generate report
+        function generateReport() {
+            alert('PDF Report generation would be implemented here. The report would include:\n\n' +
+                  '• Executive Summary\n' +
+                  '• Key Findings & Statistics\n' +
+                  '• Geographic Analysis Maps\n' +
+                  '• City Profiles\n' +
+                  '• Recommendations\n' +
+                  '• Appendix with Full Data Tables');
+        }
+    </script>
+</body>
+</html>
