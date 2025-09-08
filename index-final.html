@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>American Red Cross | NFIRS/ARC Service Gap Analysis</title>
+    
+    <!-- Mapbox GL JS -->
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    
+    <!-- Leaflet as alternative -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Plotly -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --arc-red: #ED1B2E;
+            --arc-dark-red: #B51E2B;
+            --arc-light-gray: #F5F5F5;
+            --arc-medium-gray: #D0D0D0;
+            --arc-dark-gray: #6D6E70;
+            --arc-black: #231F20;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #17a2b8;
+        }
+        
+        /* Dark mode variables */
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-tertiary: #3d3d3d;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --text-tertiary: #808080;
+            --border-color: #404040;
+            --shadow-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Light mode variables (default) */
+        [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --bg-tertiary: #e0e0e0;
+            --text-primary: #231F20;
+            --text-secondary: #6D6E70;
+            --text-tertiary: #999999;
+            --border-color: #D0D0D0;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+        
+        /* Header */
+        .header {
+            background: var(--bg-primary);
+            border-bottom: 4px solid var(--arc-red);
+            padding: 15px 0;
+            box-shadow: 0 2px 10px var(--shadow-color);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .arc-logo {
+            width: 50px;
+            height: 50px;
+            background: var(--arc-red);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 22px;
+        }
+        
+        .header h1 {
+            color: var(--arc-red);
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .header .subtitle {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-top: 2px;
+        }
+        
+        /* Theme Toggle */
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .theme-toggle button {
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .theme-toggle button:hover {
+            background: var(--arc-red);
+            color: white;
+        }
+        
+        .theme-toggle button.active {
+            background: var(--arc-red);
+            color: white;
+        }
+        
+        /* Tab Navigation */
+        .tab-nav {
+            background: var(--bg-primary);
+            padding: 0 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 5px;
+            overflow-x: auto;
+        }
+        
+        .tab-button {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .tab-button:hover {
+            color: var(--arc-red);
+            background: var(--bg-secondary);
+        }
+        
+        .tab-button.active {
+            color: var(--arc-red);
+            border-bottom-color: var(--arc-red);
+            background: var(--bg-secondary);
+        }
+        
+        /* Main Content */
+        .main-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Info Banners */
+        .info-banner {
+            background: var(--bg-primary);
+            border-left: 4px solid var(--info);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+            display: flex;
+            align-items: start;
+            gap: 15px;
+            box-shadow: 0 2px 10px var(--shadow-color);
+        }
+        
+        .info-banner .icon {
+            color: var(--info);
+            font-size: 24px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        
+        .info-banner .content {
+            flex: 1;
+        }
+        
+        .info-banner .title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        
+        .info-banner .description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        /* Map Container */
+        .map-container {
+            background: var(--bg-primary);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px var(--shadow-color);
+            margin-bottom: 20px;
+        }
+        
+        .map-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .map-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--arc-red);
+        }
+        
+        .map-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .map-style-btn {
+            padding: 6px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .map-style-btn:hover {
+            background: var(--arc-red);
+            color: white;
+        }
+        
+        .map-style-btn.active {
+            background: var(--arc-red);
+            color: white;
+        }
+        
+        .map {
+            height: 600px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: var(--bg-primary);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 10px var(--shadow-color);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 20px var(--shadow-color);
+            border-color: var(--arc-red);
+        }
+        
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: var(--arc-red);
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Chart Container */
+        .chart-container {
+            background: var(--bg-primary);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px var(--shadow-color);
+        }
+        
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        .chart-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--arc-red);
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            background: var(--bg-primary);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px var(--shadow-color);
+            margin-bottom: 20px;
+        }
+        
+        .layer-control {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .layer-control:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .layer-control input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            accent-color: var(--arc-red);
+        }
+        
+        .color-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        /* Grid Layout */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-primary {
+            background: var(--arc-red);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--arc-dark-red);
+        }
+        
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .tab-nav {
+                padding: 0 10px;
+            }
+            
+            .tab-button {
+                padding: 10px 15px;
+                font-size: 13px;
+            }
+            
+            .map {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <div class="arc-logo">+</div>
+                <div>
+                    <h1>American Red Cross</h1>
+                    <div class="subtitle">NFIRS/ARC Service Gap Analysis | New Hampshire 2021-2022</div>
+                </div>
+            </div>
+            <div class="theme-toggle">
+                <span style="color: var(--text-secondary); margin-right: 10px;">Theme:</span>
+                <button id="lightTheme" class="active" onclick="setTheme('light')">
+                    <i class="fas fa-sun"></i> Light
+                </button>
+                <button id="darkTheme" onclick="setTheme('dark')">
+                    <i class="fas fa-moon"></i> Dark
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+        <button class="tab-button active" onclick="switchTab('overview')">
+            <i class="fas fa-dashboard"></i> Overview Dashboard
+        </button>
+        <button class="tab-button" onclick="switchTab('mapbox')">
+            <i class="fas fa-map"></i> Mapbox Analysis
+        </button>
+        <button class="tab-button" onclick="switchTab('leaflet')">
+            <i class="fas fa-globe"></i> OpenStreetMap View
+        </button>
+        <button class="tab-button" onclick="switchTab('analytics')">
+            <i class="fas fa-chart-line"></i> Analytics & Charts
+        </button>
+        <button class="tab-button" onclick="switchTab('data')">
+            <i class="fas fa-database"></i> Data Export
+        </button>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="info-banner">
+                <i class="fas fa-info-circle icon"></i>
+                <div class="content">
+                    <div class="title">Welcome to the ARC Service Gap Analysis Dashboard</div>
+                    <div class="description">
+                        This dashboard analyzes the coordination between NFIRS (National Fire Incident Reporting System) and ARC (American Red Cross) 
+                        response data in New Hampshire. With only an 18.2% match rate between systems, we've identified significant opportunities 
+                        to improve service delivery and ensure no fire victim goes without assistance. Navigate through the tabs above to explore 
+                        different visualizations and analysis tools.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">30</div>
+                    <div class="stat-label">Cities Analyzed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">189</div>
+                    <div class="stat-label">NFIRS Reports</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">281</div>
+                    <div class="stat-label">ARC Cases</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">26</div>
+                    <div class="stat-label">Matched Records</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--danger);">18.2%</div>
+                    <div class="stat-label">Match Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--warning);">297</div>
+                    <div class="stat-label">Service Gaps</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--danger);">81.8%</div>
+                    <div class="stat-label">Gap Rate</div>
+                </div>
+            </div>
+            
+            <div class="grid-2">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">Top Gap Cities</div>
+                    </div>
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="overviewChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">Service Flow Analysis</div>
+                    </div>
+                    <div id="overviewSankey" style="height: 300px;"></div>
+                </div>
+            </div>
+            
+            <div class="info-banner">
+                <i class="fas fa-lightbulb icon"></i>
+                <div class="content">
+                    <div class="title">Key Findings</div>
+                    <div class="description">
+                        • Manchester shows the largest gap with 43 ARC responses but only 7 NFIRS reports<br>
+                        • Salem and Derry have multiple NFIRS reports but zero ARC responses, indicating potential missed services<br>
+                        • Berlin and Allenstown demonstrate perfect coordination with 100% match rates - study as best practice models<br>
+                        • The service gap increased by 23% from 2021 to 2022, requiring immediate intervention
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mapbox Tab -->
+        <div id="mapbox" class="tab-content">
+            <div class="map-container">
+                <div class="map-header">
+                    <div class="map-title">Mapbox Visualization</div>
+                    <div class="map-controls">
+                        <button class="map-style-btn active" onclick="changeMapboxStyle('light')">Light</button>
+                        <button class="map-style-btn" onclick="changeMapboxStyle('dark')">Dark</button>
+                        <button class="map-style-btn" onclick="changeMapboxStyle('satellite')">Satellite</button>
+                        <button class="map-style-btn" onclick="changeMapboxStyle('streets')">Streets</button>
+                    </div>
+                </div>
+                
+                <div class="info-banner">
+                    <i class="fas fa-map-marked-alt icon"></i>
+                    <div class="content">
+                        <div class="title">Interactive Mapbox Visualization</div>
+                        <div class="description">
+                            This map uses Mapbox GL for smooth, vector-based rendering. Circle size represents incident count (minimum 15px for visibility). 
+                            Colors indicate coordination status: Green = Perfect match, Red = NFIRS only (no ARC response), 
+                            Purple = ARC only (no NFIRS record), Yellow/Orange = Partial matches. Click any marker for details.
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="mapboxMap" class="map"></div>
+            </div>
+            
+            <div class="grid-3">
+                <div class="control-panel">
+                    <h3 style="color: var(--arc-red); margin-bottom: 15px;">Layer Controls</h3>
+                    <div class="layer-control">
+                        <input type="checkbox" id="mb-perfect" checked onchange="toggleMapboxLayer('perfect')">
+                        <span class="color-indicator" style="background: #28a745;"></span>
+                        <span>Perfect Match (100%)</span>
+                    </div>
+                    <div class="layer-control">
+                        <input type="checkbox" id="mb-partial" checked onchange="toggleMapboxLayer('partial')">
+                        <span class="color-indicator" style="background: #ffc107;"></span>
+                        <span>Partial Match (50-99%)</span>
+                    </div>
+                    <div class="layer-control">
+                        <input type="checkbox" id="mb-poor" checked onchange="toggleMapboxLayer('poor')">
+                        <span class="color-indicator" style="background: #fd7e14;"></span>
+                        <span>Poor Match (<50%)</span>
+                    </div>
+                    <div class="layer-control">
+                        <input type="checkbox" id="mb-nfirs" checked onchange="toggleMapboxLayer('nfirs')">
+                        <span class="color-indicator" style="background: #dc3545;"></span>
+                        <span>NFIRS Only (No ARC)</span>
+                    </div>
+                    <div class="layer-control">
+                        <input type="checkbox" id="mb-arc" checked onchange="toggleMapboxLayer('arc')">
+                        <span class="color-indicator" style="background: #6f42c1;"></span>
+                        <span>ARC Only (No NFIRS)</span>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">Gap Summary</div>
+                    </div>
+                    <div style="height: 200px; position: relative;">
+                    <canvas id="mapboxPie"></canvas>
+                </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Leaflet Tab -->
+        <div id="leaflet" class="tab-content">
+            <div class="map-container">
+                <div class="map-header">
+                    <div class="map-title">OpenStreetMap Visualization</div>
+                    <div class="map-controls">
+                        <button class="map-style-btn active" onclick="changeLeafletStyle('osm')">OSM Standard</button>
+                        <button class="map-style-btn" onclick="changeLeafletStyle('carto-light')">Carto Light</button>
+                        <button class="map-style-btn" onclick="changeLeafletStyle('carto-dark')">Carto Dark</button>
+                        <button class="map-style-btn" onclick="toggleHeatmap()">Toggle Heatmap</button>
+                    </div>
+                </div>
+                
+                <div class="info-banner">
+                    <i class="fas fa-globe icon"></i>
+                    <div class="content">
+                        <div class="title">OpenStreetMap with Clustering</div>
+                        <div class="description">
+                            This map uses Leaflet with OpenStreetMap tiles (no API key required). Features include marker clustering for dense areas, 
+                            heatmap overlay to show gap severity, and multiple base map styles. The clustering automatically groups nearby incidents 
+                            for cleaner visualization at different zoom levels.
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="leafletMap" class="map"></div>
+            </div>
+        </div>
+        
+        <!-- Analytics Tab -->
+        <div id="analytics" class="tab-content">
+            <!-- Population Impact Analysis - Full Width -->
+            <div class="chart-container" id="populationAnalysisContainer">
+                <div class="chart-header">
+                    <div class="chart-title">Population vs. Service Gap Analysis</div>
+                    <button onclick="toggleFullscreen('populationAnalysisContainer')" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">
+                        <i class="fas fa-expand"></i> Fullscreen
+                    </button>
+                </div>
+                <div class="info-banner">
+                    <i class="fas fa-users icon"></i>
+                    <div class="content">
+                        <div class="title">Understanding Population Impact</div>
+                        <div class="description">
+                            This bubble chart shows cities by population (x-axis, log scale) vs match rate (y-axis). 
+                            Bubble size represents total incidents. Large cities with low match rates (bottom-right) like Manchester 
+                            affect the most residents and should be prioritized for intervention. Click the fullscreen button for detailed analysis.
+                        </div>
+                    </div>
+                </div>
+                <div id="bubbleChart" style="height: 500px;"></div>
+            </div>
+            
+            <div class="grid-2" style="margin-top: 20px;">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">City-by-City Comparison</div>
+                    </div>
+                    <div class="info-banner">
+                        <i class="fas fa-chart-bar icon"></i>
+                        <div class="content">
+                            <div class="title">Reading the Comparison</div>
+                            <div class="description">
+                                Blue bars show NFIRS reports, red bars show ARC responses. Large differences indicate coordination gaps.
+                                Manchester's 43 ARC responses vs 7 NFIRS reports suggests underreporting to NFIRS.
+                            </div>
+                        </div>
+                    </div>
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="cityChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">Temporal Trends</div>
+                    </div>
+                    <div class="info-banner">
+                        <i class="fas fa-clock icon"></i>
+                        <div class="content">
+                            <div class="title">Gap Growth Over Time</div>
+                            <div class="description">
+                                Service gaps increased 23% from 2021 to 2022, indicating worsening coordination between systems.
+                            </div>
+                        </div>
+                    </div>
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="temporalChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Data Export Tab -->
+        <div id="data" class="tab-content">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">Data Export & Reports</div>
+                </div>
+                
+                <div class="info-banner">
+                    <i class="fas fa-database icon"></i>
+                    <div class="content">
+                        <div class="title">Export Options</div>
+                        <div class="description">
+                            Download the complete dataset in various formats for further analysis. CSV format is compatible with Excel and most data analysis tools. 
+                            GeoJSON format can be imported directly into ArcGIS Online or QGIS for advanced spatial analysis.
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin: 20px 0;">
+                    <button onclick="exportData('csv')" class="btn btn-primary">
+                        <i class="fas fa-file-csv"></i> Export to CSV
+                    </button>
+                    <button onclick="exportData('geojson')" class="btn btn-primary">
+                        <i class="fas fa-map"></i> Export GeoJSON
+                    </button>
+                    <button onclick="generateReport()" class="btn btn-primary">
+                        <i class="fas fa-file-pdf"></i> Generate Report
+                    </button>
+                </div>
+                
+                <div class="grid-2">
+                    <div>
+                        <h3 style="color: var(--arc-red); margin-bottom: 15px;">Data Summary</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr style="border-bottom: 2px solid var(--border-color);">
+                                <th style="text-align: left; padding: 10px;">Metric</th>
+                                <th style="text-align: right; padding: 10px;">Value</th>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 10px;">Total Cities</td>
+                                <td style="text-align: right; padding: 10px; font-weight: bold;">30</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 10px;">NFIRS Reports</td>
+                                <td style="text-align: right; padding: 10px; font-weight: bold;">189</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 10px;">ARC Cases</td>
+                                <td style="text-align: right; padding: 10px; font-weight: bold;">281</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 10px;">Matched Records</td>
+                                <td style="text-align: right; padding: 10px; font-weight: bold;">26</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 10px;">Service Gaps</td>
+                                <td style="text-align: right; padding: 10px; font-weight: bold; color: var(--danger);">297</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;">Overall Match Rate</td>
+                                <td style="text-align: right; padding: 10px; font-weight: bold; color: var(--danger);">18.2%</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div>
+                        <h3 style="color: var(--arc-red); margin-bottom: 15px;">Top Priority Cities</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr style="border-bottom: 2px solid var(--border-color);">
+                                <th style="text-align: left; padding: 10px;">City</th>
+                                <th style="text-align: right; padding: 10px;">Gap</th>
+                                <th style="text-align: right; padding: 10px;">Action</th>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 10px;">Manchester</td>
+                                <td style="text-align: right; padding: 10px; color: var(--danger);">36</td>
+                                <td style="text-align: right; padding: 10px;">Investigate NFIRS reporting</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 10px;">Nashua</td>
+                                <td style="text-align: right; padding: 10px; color: var(--danger);">31</td>
+                                <td style="text-align: right; padding: 10px;">Improve coordination</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 10px;">Derry</td>
+                                <td style="text-align: right; padding: 10px; color: var(--danger);">22</td>
+                                <td style="text-align: right; padding: 10px;">Establish ARC presence</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 10px;">Salem</td>
+                                <td style="text-align: right; padding: 10px; color: var(--danger);">18</td>
+                                <td style="text-align: right; padding: 10px;">Establish ARC presence</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;">Rochester</td>
+                                <td style="text-align: right; padding: 10px; color: var(--warning);">22</td>
+                                <td style="text-align: right; padding: 10px;">Review protocols</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mapbox API Token
+        mapboxgl.accessToken = 'pk.eyJ1IjoiamZyYW56ZW4yNSIsImEiOiJjbWQ3cHY0cXMwbXVvMmpwbnNsbTExdG9jIn0.W5vlfBzBIHDWl5kKzYuUHg';
+        
+        // Dataset
+        const nhFullDataset = [
+            { city: "Manchester", lat: 42.9956, lng: -71.4548, nfirs: 7, arc: 43, matched: 1, population: 115644, year2021: {nfirs: 3, arc: 20}, year2022: {nfirs: 4, arc: 23} },
+            { city: "Nashua", lat: 42.7654, lng: -71.4676, nfirs: 8, arc: 39, matched: 2, population: 91322, year2021: {nfirs: 4, arc: 18}, year2022: {nfirs: 4, arc: 21} },
+            { city: "Concord", lat: 43.2081, lng: -71.5376, nfirs: 6, arc: 28, matched: 1, population: 43976, year2021: {nfirs: 3, arc: 13}, year2022: {nfirs: 3, arc: 15} },
+            { city: "Rochester", lat: 43.3045, lng: -70.9759, nfirs: 2, arc: 24, matched: 0, population: 32492, year2021: {nfirs: 1, arc: 11}, year2022: {nfirs: 1, arc: 13} },
+            { city: "Dover", lat: 43.1979, lng: -70.8737, nfirs: 3, arc: 18, matched: 1, population: 32741, year2021: {nfirs: 2, arc: 8}, year2022: {nfirs: 1, arc: 10} },
+            { city: "Salem", lat: 42.7886, lng: -71.2009, nfirs: 18, arc: 0, matched: 0, population: 30089, year2021: {nfirs: 8, arc: 0}, year2022: {nfirs: 10, arc: 0} },
+            { city: "Derry", lat: 42.8806, lng: -71.3273, nfirs: 22, arc: 0, matched: 0, population: 34317, year2021: {nfirs: 10, arc: 0}, year2022: {nfirs: 12, arc: 0} },
+            { city: "Hudson", lat: 42.7651, lng: -71.4398, nfirs: 14, arc: 0, matched: 0, population: 25394, year2021: {nfirs: 6, arc: 0}, year2022: {nfirs: 8, arc: 0} },
+            { city: "Merrimack", lat: 42.8651, lng: -71.4934, nfirs: 16, arc: 0, matched: 0, population: 26632, year2021: {nfirs: 7, arc: 0}, year2022: {nfirs: 9, arc: 0} },
+            { city: "Berlin", lat: 44.4687, lng: -71.1851, nfirs: 5, arc: 5, matched: 5, population: 10051, year2021: {nfirs: 2, arc: 2}, year2022: {nfirs: 3, arc: 3} },
+            { city: "Allenstown", lat: 43.1476, lng: -71.3831, nfirs: 2, arc: 2, matched: 2, population: 4707, year2021: {nfirs: 1, arc: 1}, year2022: {nfirs: 1, arc: 1} },
+            { city: "Portsmouth", lat: 43.0718, lng: -70.7626, nfirs: 5, arc: 14, matched: 2, population: 23011, year2021: {nfirs: 3, arc: 6}, year2022: {nfirs: 2, arc: 8} },
+            { city: "Keene", lat: 42.9337, lng: -72.2781, nfirs: 4, arc: 15, matched: 1, population: 23409, year2021: {nfirs: 2, arc: 7}, year2022: {nfirs: 2, arc: 8} },
+            { city: "Laconia", lat: 43.5279, lng: -71.4704, nfirs: 3, arc: 12, matched: 1, population: 16871, year2021: {nfirs: 1, arc: 5}, year2022: {nfirs: 2, arc: 7} },
+            { city: "Lebanon", lat: 43.6423, lng: -72.2518, nfirs: 2, arc: 11, matched: 0, population: 14282, year2021: {nfirs: 1, arc: 5}, year2022: {nfirs: 1, arc: 6} }
+        ];
+
+        let mapboxMap, leafletMap, heatmapLayer;
+        let mapboxMarkers = [];
+        let currentMapboxStyle = 'light';
+        let currentLeafletStyle = 'osm';
+
+        // Initialize everything
+        window.addEventListener('load', () => {
+            initOverviewCharts();
+            // Initialize maps when tabs are clicked
+        });
+
+        // Track if charts have been initialized
+        let chartsInitialized = {
+            city: false,
+            temporal: false,
+            bubble: false
+        };
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Initialize maps when needed
+            if (tabName === 'mapbox' && !mapboxMap) {
+                setTimeout(() => initMapbox(), 100);
+            }
+            if (tabName === 'leaflet' && !leafletMap) {
+                setTimeout(() => initLeaflet(), 100);
+            }
+            if (tabName === 'analytics') {
+                setTimeout(() => {
+                    if (!chartsInitialized.city) {
+                        initCityChart();
+                        chartsInitialized.city = true;
+                    }
+                    if (!chartsInitialized.temporal) {
+                        initTemporalChart();
+                        chartsInitialized.temporal = true;
+                    }
+                    if (!chartsInitialized.bubble) {
+                        initBubbleChart();
+                        chartsInitialized.bubble = true;
+                    }
+                }, 100);
+            }
+        }
+
+        // Theme switching
+        function setTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+            document.getElementById('lightTheme').classList.toggle('active', theme === 'light');
+            document.getElementById('darkTheme').classList.toggle('active', theme === 'dark');
+            
+            // Update map styles if initialized
+            if (mapboxMap && theme === 'dark') {
+                changeMapboxStyle('dark');
+            } else if (mapboxMap && theme === 'light') {
+                changeMapboxStyle('light');
+            }
+            
+            if (leafletMap && theme === 'dark') {
+                changeLeafletStyle('carto-dark');
+            } else if (leafletMap && theme === 'light') {
+                changeLeafletStyle('carto-light');
+            }
+        }
+
+        // Helper function to categorize cities
+        function categorizeCity(city) {
+            const matchRate = city.nfirs > 0 ? (city.matched / Math.min(city.nfirs, city.arc)) * 100 : 0;
+            
+            if (city.nfirs === 0 && city.arc > 0) {
+                return { category: 'arc', color: '#6f42c1', label: 'ARC Only' };
+            } else if (city.arc === 0 && city.nfirs > 0) {
+                return { category: 'nfirs', color: '#dc3545', label: 'NFIRS Only' };
+            } else if (matchRate === 100) {
+                return { category: 'perfect', color: '#28a745', label: 'Perfect Match' };
+            } else if (matchRate >= 50) {
+                return { category: 'partial', color: '#ffc107', label: 'Partial Match' };
+            } else {
+                return { category: 'poor', color: '#fd7e14', label: 'Poor Match' };
+            }
+        }
+
+        // Initialize Overview Charts
+        function initOverviewCharts() {
+            // City comparison chart
+            const ctx = document.getElementById('overviewChart').getContext('2d');
+            const topCities = nhFullDataset.slice(0, 8);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topCities.map(c => c.city),
+                    datasets: [{
+                        label: 'NFIRS Reports',
+                        data: topCities.map(c => c.nfirs),
+                        backgroundColor: '#3B82F6'
+                    }, {
+                        label: 'ARC Cases',
+                        data: topCities.map(c => c.arc),
+                        backgroundColor: '#ED1B2E'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Sankey diagram
+            const sankeyData = [{
+                type: 'sankey',
+                orientation: 'h',
+                node: {
+                    pad: 15,
+                    thickness: 30,
+                    line: { color: 'black', width: 0.5 },
+                    label: ['NFIRS (189)', 'ARC (281)', 'Matched (26)', 'NFIRS Gap (163)', 'ARC Gap (255)'],
+                    color: ['#3B82F6', '#ED1B2E', '#28a745', '#ffc107', '#ffc107']
+                },
+                link: {
+                    source: [0, 1, 0, 1],
+                    target: [2, 2, 3, 4],
+                    value: [26, 26, 163, 255]
+                }
+            }];
+            
+            Plotly.newPlot('overviewSankey', sankeyData, 
+                { margin: { t: 10, r: 10, b: 10, l: 10 } }, 
+                { responsive: true, displayModeBar: false });
+        }
+
+        // Initialize Mapbox
+        function initMapbox() {
+            mapboxMap = new mapboxgl.Map({
+                container: 'mapboxMap',
+                style: 'mapbox://styles/mapbox/light-v11',
+                center: [-71.5, 43.5],
+                zoom: 7
+            });
+
+            mapboxMap.on('load', () => {
+                addMapboxMarkers();
+                initMapboxPieChart();
+            });
+        }
+
+        function addMapboxMarkers() {
+            nhFullDataset.forEach(city => {
+                const category = categorizeCity(city);
+                const matchRate = city.nfirs > 0 ? ((city.matched / Math.min(city.nfirs, city.arc)) * 100).toFixed(1) : 0;
+                
+                // Calculate size with minimum 15px for visibility
+                const baseSize = Math.sqrt(Math.max(city.nfirs, city.arc)) * 8;
+                const size = Math.max(15, baseSize);
+                
+                const el = document.createElement('div');
+                el.className = `marker-${category.category}`;
+                el.style.backgroundColor = category.color;
+                el.style.width = size + 'px';
+                el.style.height = size + 'px';
+                el.style.borderRadius = '50%';
+                el.style.border = '3px solid white';
+                el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+                el.style.cursor = 'pointer';
+                
+                const marker = new mapboxgl.Marker(el)
+                    .setLngLat([city.lng, city.lat])
+                    .setPopup(new mapboxgl.Popup().setHTML(`
+                        <strong>${city.city}</strong><br>
+                        Population: ${city.population.toLocaleString()}<br>
+                        NFIRS: ${city.nfirs} | ARC: ${city.arc}<br>
+                        Matched: ${city.matched} (${matchRate}%)<br>
+                        Gap: ${Math.abs(city.nfirs - city.arc)}<br>
+                        <span style="color: ${category.color}; font-weight: bold;">${category.label}</span>
+                    `))
+                    .addTo(mapboxMap);
+                
+                mapboxMarkers.push({ marker, category: category.category });
+            });
+        }
+
+        function changeMapboxStyle(style) {
+            const styles = {
+                'light': 'mapbox://styles/mapbox/light-v11',
+                'dark': 'mapbox://styles/mapbox/dark-v11',
+                'satellite': 'mapbox://styles/mapbox/satellite-streets-v12',
+                'streets': 'mapbox://styles/mapbox/streets-v12'
+            };
+            
+            if (mapboxMap) {
+                mapboxMap.setStyle(styles[style]);
+                
+                // Update button states
+                document.querySelectorAll('.map-style-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                event.target.classList.add('active');
+                
+                // Re-add markers after style change
+                mapboxMap.once('styledata', () => {
+                    mapboxMarkers = [];
+                    addMapboxMarkers();
+                });
+            }
+        }
+
+        function toggleMapboxLayer(layer) {
+            mapboxMarkers.forEach(({ marker, category }) => {
+                if (category === layer) {
+                    const el = marker.getElement();
+                    el.style.display = document.getElementById('mb-' + layer).checked ? 'block' : 'none';
+                }
+            });
+        }
+
+        function initMapboxPieChart() {
+            const ctx = document.getElementById('mapboxPie').getContext('2d');
+            const categories = {
+                'Perfect Match': 0,
+                'Partial Match': 0,
+                'Poor Match': 0,
+                'NFIRS Only': 0,
+                'ARC Only': 0
+            };
+            
+            nhFullDataset.forEach(city => {
+                const cat = categorizeCity(city);
+                categories[cat.label]++;
+            });
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(categories),
+                    datasets: [{
+                        data: Object.values(categories),
+                        backgroundColor: ['#28a745', '#ffc107', '#fd7e14', '#dc3545', '#6f42c1']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        // Initialize Leaflet
+        function initLeaflet() {
+            leafletMap = L.map('leafletMap').setView([43.5, -71.5], 7);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(leafletMap);
+            
+            const markerCluster = L.markerClusterGroup();
+            
+            nhFullDataset.forEach(city => {
+                const category = categorizeCity(city);
+                const matchRate = city.nfirs > 0 ? ((city.matched / Math.min(city.nfirs, city.arc)) * 100).toFixed(1) : 0;
+                const baseSize = Math.sqrt(Math.max(city.nfirs, city.arc)) * 6;
+                const size = Math.max(15, baseSize);
+                
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color: ${category.color}; width: ${size}px; height: ${size}px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [size, size],
+                    iconAnchor: [size/2, size/2]
+                });
+                
+                const marker = L.marker([city.lat, city.lng], { icon: icon })
+                    .bindPopup(`
+                        <strong>${city.city}</strong><br>
+                        Population: ${city.population.toLocaleString()}<br>
+                        NFIRS: ${city.nfirs} | ARC: ${city.arc}<br>
+                        Matched: ${city.matched} (${matchRate}%)<br>
+                        Gap: ${Math.abs(city.nfirs - city.arc)}<br>
+                        <span style="color: ${category.color}; font-weight: bold;">${category.label}</span>
+                    `);
+                
+                markerCluster.addLayer(marker);
+            });
+            
+            leafletMap.addLayer(markerCluster);
+        }
+
+        function changeLeafletStyle(style) {
+            if (!leafletMap) return;
+            
+            const tiles = {
+                'osm': 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'carto-light': 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                'carto-dark': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            };
+            
+            // Remove current tile layer
+            leafletMap.eachLayer(layer => {
+                if (layer instanceof L.TileLayer) {
+                    leafletMap.removeLayer(layer);
+                }
+            });
+            
+            // Add new tile layer
+            L.tileLayer(tiles[style], {
+                attribution: '© OpenStreetMap contributors © CARTO'
+            }).addTo(leafletMap);
+            
+            // Update button states
+            document.querySelectorAll('.map-style-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        function toggleHeatmap() {
+            if (!leafletMap) return;
+            
+            if (heatmapLayer) {
+                leafletMap.removeLayer(heatmapLayer);
+                heatmapLayer = null;
+            } else {
+                const heatData = nhFullDataset.map(city => {
+                    const gap = Math.abs(city.nfirs - city.arc);
+                    return [city.lat, city.lng, gap / 50];
+                });
+                
+                heatmapLayer = L.heatLayer(heatData, {
+                    radius: 25,
+                    blur: 15,
+                    maxZoom: 10
+                }).addTo(leafletMap);
+            }
+        }
+
+        // Analytics Charts
+        function initCityChart() {
+            const ctx = document.getElementById('cityChart').getContext('2d');
+            const cities = nhFullDataset.slice(0, 10).map(c => c.city);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: cities,
+                    datasets: [{
+                        label: 'NFIRS Reports',
+                        data: nhFullDataset.slice(0, 10).map(c => c.nfirs),
+                        backgroundColor: '#3B82F6'
+                    }, {
+                        label: 'ARC Cases',
+                        data: nhFullDataset.slice(0, 10).map(c => c.arc),
+                        backgroundColor: '#ED1B2E'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function initTemporalChart() {
+            const ctx = document.getElementById('temporalChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['2021 Q1', '2021 Q2', '2021 Q3', '2021 Q4', '2022 Q1', '2022 Q2', '2022 Q3', '2022 Q4'],
+                    datasets: [{
+                        label: 'Service Gap Count',
+                        data: [45, 52, 48, 61, 58, 67, 72, 79],
+                        borderColor: '#ED1B2E',
+                        backgroundColor: 'rgba(237, 27, 46, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function initBubbleChart() {
+            const bubbleData = nhFullDataset.map(city => ({
+                x: city.population,
+                y: city.nfirs > 0 ? (city.matched / Math.min(city.nfirs, city.arc)) * 100 : 0,
+                r: Math.sqrt(Math.max(city.nfirs, city.arc)) * 5,
+                name: city.city,
+                gap: Math.abs(city.nfirs - city.arc),
+                nfirs: city.nfirs,
+                arc: city.arc
+            }));
+            
+            const trace = {
+                x: bubbleData.map(d => d.x),
+                y: bubbleData.map(d => d.y),
+                mode: 'markers+text',
+                marker: {
+                    size: bubbleData.map(d => d.r),
+                    color: bubbleData.map(d => d.gap),
+                    colorscale: [
+                        [0, '#28a745'],
+                        [0.5, '#ffc107'],
+                        [1, '#dc3545']
+                    ],
+                    showscale: true,
+                    colorbar: {
+                        title: 'Service Gap',
+                        thickness: 15,
+                        len: 0.7
+                    },
+                    opacity: 0.7,
+                    line: {
+                        color: 'white',
+                        width: 2
+                    }
+                },
+                text: bubbleData.map(d => d.name),
+                textposition: 'top center',
+                type: 'scatter',
+                hovertemplate: '<b>%{text}</b><br>' +
+                              'Population: %{x:,.0f}<br>' +
+                              'Match Rate: %{y:.1f}%<br>' +
+                              'NFIRS: ' + bubbleData.map(d => d.nfirs) + '<br>' +
+                              'ARC: ' + bubbleData.map(d => d.arc) + '<br>' +
+                              'Gap: ' + bubbleData.map(d => d.gap) + '<br>' +
+                              '<extra></extra>'
+            };
+            
+            const layout = {
+                xaxis: { 
+                    title: 'Population (log scale)', 
+                    type: 'log',
+                    gridcolor: 'rgba(128,128,128,0.2)'
+                },
+                yaxis: { 
+                    title: 'Match Rate (%)',
+                    gridcolor: 'rgba(128,128,128,0.2)',
+                    range: [-5, 105]
+                },
+                margin: { t: 20, r: 100, b: 60, l: 80 },
+                plot_bgcolor: 'rgba(250,250,250,0.5)',
+                paper_bgcolor: 'transparent',
+                font: {
+                    family: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                }
+            };
+            
+            Plotly.newPlot('bubbleChart', [trace], layout, {responsive: true, displayModeBar: true});
+        }
+        
+        // Fullscreen toggle function
+        function toggleFullscreen(elementId) {
+            const elem = document.getElementById(elementId);
+            const icon = event.target.querySelector('i') || event.target;
+            
+            if (!document.fullscreenElement) {
+                elem.requestFullscreen().then(() => {
+                    icon.classList.remove('fa-expand');
+                    icon.classList.add('fa-compress');
+                    // Resize the chart when entering fullscreen
+                    if (elementId === 'populationAnalysisContainer') {
+                        setTimeout(() => {
+                            Plotly.Plots.resize('bubbleChart');
+                        }, 100);
+                    }
+                }).catch((err) => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen().then(() => {
+                    icon.classList.remove('fa-compress');
+                    icon.classList.add('fa-expand');
+                    // Resize the chart when exiting fullscreen
+                    if (elementId === 'populationAnalysisContainer') {
+                        setTimeout(() => {
+                            Plotly.Plots.resize('bubbleChart');
+                        }, 100);
+                    }
+                });
+            }
+        }
+
+        // Export functions
+        function exportData(format) {
+            if (format === 'csv') {
+                const headers = ['City', 'Latitude', 'Longitude', 'Population', 'NFIRS', 'ARC_Cases', 'Matched', 'Match_Rate', 'Category', 'Gap_Count'];
+                const rows = nhFullDataset.map(city => {
+                    const category = categorizeCity(city);
+                    const matchRate = city.nfirs > 0 ? ((city.matched / Math.min(city.nfirs, city.arc)) * 100).toFixed(1) : 0;
+                    return [
+                        city.city, city.lat, city.lng, city.population,
+                        city.nfirs, city.arc, city.matched, matchRate,
+                        category.label, Math.abs(city.nfirs - city.arc)
+                    ];
+                });
+                
+                const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+                downloadFile(csvContent, 'arc_gap_analysis.csv', 'text/csv');
+                
+            } else if (format === 'geojson') {
+                const features = nhFullDataset.map(city => {
+                    const category = categorizeCity(city);
+                    return {
+                        type: "Feature",
+                        properties: {
+                            name: city.city,
+                            nfirs: city.nfirs,
+                            arc: city.arc,
+                            matched: city.matched,
+                            population: city.population,
+                            category: category.label,
+                            gap: Math.abs(city.nfirs - city.arc)
+                        },
+                        geometry: {
+                            type: "Point",
+                            coordinates: [city.lng, city.lat]
+                        }
+                    };
+                });
+                
+                const geoJSON = {
+                    type: "FeatureCollection",
+                    features: features
+                };
+                
+                downloadFile(JSON.stringify(geoJSON, null, 2), 'arc_gap_analysis.geojson', 'application/json');
+            }
+        }
+        
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type: type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function generateReport() {
+            alert('Generating comprehensive ARC Service Gap Report...\n\nReport will include:\n• Executive Summary with key findings\n• Detailed city-by-city analysis\n• Recommendations for service improvement\n• Resource allocation suggestions\n• Best practices from high-performing cities\n\nNote: In production, this would generate a PDF report.');
+        }
+    </script>
+</body>
+</html>

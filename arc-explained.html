@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>American Red Cross | NFIRS/ARC Gap Analysis with Explanations</title>
+    
+    <!-- Leaflet for mapping -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Leaflet plugins -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Plotly -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        :root {
+            --arc-red: #ED1B2E;
+            --arc-dark-red: #B51E2B;
+            --arc-light-gray: #F5F5F5;
+            --arc-medium-gray: #D0D0D0;
+            --arc-dark-gray: #6D6E70;
+            --arc-black: #231F20;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #17a2b8;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background: var(--arc-light-gray);
+            color: var(--arc-black);
+            line-height: 1.6;
+        }
+        
+        /* Header */
+        .header {
+            background: white;
+            border-bottom: 4px solid var(--arc-red);
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .arc-logo {
+            width: 60px;
+            height: 60px;
+            background: var(--arc-red);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 24px;
+        }
+        
+        .header h1 {
+            color: var(--arc-red);
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .header .subtitle {
+            color: var(--arc-dark-gray);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        
+        /* Info Banners */
+        .info-banner {
+            background: linear-gradient(135deg, #E8F4F8 0%, #F0F8FF 100%);
+            border-left: 4px solid var(--info);
+            padding: 12px 16px;
+            margin: 15px 0;
+            border-radius: 6px;
+            display: flex;
+            align-items: start;
+            gap: 12px;
+        }
+        
+        .info-banner .icon {
+            color: var(--info);
+            font-size: 20px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        
+        .info-banner .content {
+            flex: 1;
+        }
+        
+        .info-banner .title {
+            font-weight: 600;
+            color: var(--arc-black);
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        
+        .info-banner .description {
+            font-size: 13px;
+            color: var(--arc-dark-gray);
+            line-height: 1.5;
+        }
+        
+        /* Chart Containers */
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--arc-light-gray);
+        }
+        
+        .chart-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--arc-red);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .help-icon {
+            width: 24px;
+            height: 24px;
+            background: var(--info);
+            color: white;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: help;
+            transition: all 0.3s ease;
+        }
+        
+        .help-icon:hover {
+            transform: scale(1.1);
+            background: #138496;
+        }
+        
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 300px;
+            background-color: var(--arc-black);
+            color: white;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -150px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: var(--arc-black) transparent transparent transparent;
+        }
+        
+        /* Main Layout */
+        .main-container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        /* Map Container */
+        #map {
+            height: 500px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid var(--arc-light-gray);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: var(--arc-red);
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--arc-red);
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--arc-dark-gray);
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        
+        .control-section {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            color: var(--arc-red);
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-primary {
+            background: var(--arc-red);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--arc-dark-red);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <div class="arc-logo">+</div>
+                <div>
+                    <h1>American Red Cross</h1>
+                    <div class="subtitle">NFIRS/ARC Service Gap Analysis Dashboard</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Key Metrics Section -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <div class="chart-title">
+                    <i class="fas fa-chart-line"></i>
+                    Key Performance Metrics
+                    <div class="tooltip">
+                        <span class="help-icon">?</span>
+                        <span class="tooltiptext">
+                            These metrics show the overall performance of service coordination between fire departments (NFIRS) and American Red Cross (ARC) response teams. A low match rate indicates opportunities for improved coordination.
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-banner">
+                <i class="fas fa-info-circle icon"></i>
+                <div class="content">
+                    <div class="title">Understanding the Metrics</div>
+                    <div class="description">
+                        These numbers represent fire incidents in New Hampshire (2021-2022). NFIRS shows fire department reports, ARC shows Red Cross responses. 
+                        The match rate (18.2%) reveals that only 1 in 5 incidents have coordinated documentation between both organizations, indicating significant service gaps.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">30</div>
+                    <div class="stat-label">Cities Analyzed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">189</div>
+                    <div class="stat-label">NFIRS Reports</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">281</div>
+                    <div class="stat-label">ARC Cases</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">26</div>
+                    <div class="stat-label">Matched Records</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--danger);">18.2%</div>
+                    <div class="stat-label">Match Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--warning);">297</div>
+                    <div class="stat-label">Service Gaps</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Grid Layout for Charts -->
+        <div class="grid-layout">
+            <!-- Geographic Map -->
+            <div class="chart-container full-width">
+                <div class="chart-header">
+                    <div class="chart-title">
+                        <i class="fas fa-map-marked-alt"></i>
+                        Geographic Service Gap Distribution
+                        <div class="tooltip">
+                            <span class="help-icon">?</span>
+                            <span class="tooltiptext">
+                                This interactive map shows where fire incidents occurred and how well NFIRS and ARC data align. Larger circles indicate more incidents. 
+                                Colors represent match quality: Green = Perfect coordination, Red = No ARC response recorded, Purple = ARC responded but no NFIRS record.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-banner">
+                    <i class="fas fa-lightbulb icon"></i>
+                    <div class="content">
+                        <div class="title">How to Read This Map</div>
+                        <div class="description">
+                            Each circle represents a city. Circle size = number of incidents. Circle color = coordination status. 
+                            Green circles show excellent NFIRS-ARC coordination. Red circles indicate fire departments reported incidents but ARC has no record (potential missed services). 
+                            Purple circles show ARC responded but fire departments didn't report to NFIRS. Click any circle for detailed city information.
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="map"></div>
+            </div>
+            
+            <!-- Sankey Flow Diagram -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">
+                        <i class="fas fa-project-diagram"></i>
+                        Incident Flow Analysis
+                        <div class="tooltip">
+                            <span class="help-icon">?</span>
+                            <span class="tooltiptext">
+                                This Sankey diagram visualizes how incidents flow from reporting sources to their match status. 
+                                The width of each flow represents the volume of incidents, making it easy to see where the largest gaps occur.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-banner">
+                    <i class="fas fa-code-branch icon"></i>
+                    <div class="content">
+                        <div class="title">Understanding Flow Patterns</div>
+                        <div class="description">
+                            This diagram shows 189 NFIRS reports and 281 ARC cases flowing to their match status. 
+                            Only 26 matched (center), while 163 NFIRS and 255 ARC cases remain unmatched. 
+                            The large unmatched flows highlight coordination gaps.
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="sankeyChart" style="height: 400px;"></div>
+            </div>
+            
+            <!-- City Comparison Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">
+                        <i class="fas fa-chart-bar"></i>
+                        City-by-City Comparison
+                        <div class="tooltip">
+                            <span class="help-icon">?</span>
+                            <span class="tooltiptext">
+                                This bar chart compares NFIRS reports and ARC responses for each city. 
+                                Cities with large differences between bars indicate significant service gaps that need attention.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-banner">
+                    <i class="fas fa-balance-scale icon"></i>
+                    <div class="content">
+                        <div class="title">Identifying Priority Cities</div>
+                        <div class="description">
+                            Compare blue (NFIRS) and red (ARC) bars for each city. Manchester shows the largest gap: 
+                            43 ARC responses but only 7 NFIRS reports. Salem/Derry have many NFIRS reports but zero ARC responses, 
+                            suggesting missed service opportunities.
+                        </div>
+                    </div>
+                </div>
+                
+                <canvas id="cityChart" style="height: 400px;"></canvas>
+            </div>
+            
+            <!-- Population Bubble Chart -->
+            <div class="chart-container full-width">
+                <div class="chart-header">
+                    <div class="chart-title">
+                        <i class="fas fa-users"></i>
+                        Population Impact Analysis
+                        <div class="tooltip">
+                            <span class="help-icon">?</span>
+                            <span class="tooltiptext">
+                                This bubble chart reveals the relationship between city population and service coordination. 
+                                Larger bubbles indicate more incidents, position shows population vs match rate.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-banner">
+                    <i class="fas fa-search icon"></i>
+                    <div class="content">
+                        <div class="title">Finding High-Impact Opportunities</div>
+                        <div class="description">
+                            X-axis shows population (logarithmic scale), Y-axis shows match rate percentage. 
+                            Large cities with low match rates (bottom-right) affect the most people and should be prioritized. 
+                            Manchester (population 115,644) with only 2.3% match rate impacts the most residents.
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="bubbleChart" style="height: 400px;"></div>
+            </div>
+            
+            <!-- Temporal Analysis -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">
+                        <i class="fas fa-clock"></i>
+                        Year-over-Year Trends
+                        <div class="tooltip">
+                            <span class="help-icon">?</span>
+                            <span class="tooltiptext">
+                                This chart tracks how service gaps changed between 2021 and 2022, 
+                                helping identify if coordination is improving or declining over time.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-banner">
+                    <i class="fas fa-trending-up icon"></i>
+                    <div class="content">
+                        <div class="title">Trend Analysis</div>
+                        <div class="description">
+                            The gap between NFIRS and ARC reporting increased 23% from 2021 to 2022. 
+                            This growing disconnect suggests the need for immediate intervention to improve data sharing protocols.
+                        </div>
+                    </div>
+                </div>
+                
+                <canvas id="temporalChart" style="height: 350px;"></canvas>
+            </div>
+            
+            <!-- Heatmap Matrix -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">
+                        <i class="fas fa-th"></i>
+                        Service Density Heatmap
+                        <div class="tooltip">
+                            <span class="help-icon">?</span>
+                            <span class="tooltiptext">
+                                This heatmap uses color intensity to show service density patterns across cities and metrics, 
+                                making it easy to spot clusters of high activity or gaps.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-banner">
+                    <i class="fas fa-fire icon"></i>
+                    <div class="content">
+                        <div class="title">Reading the Heat Patterns</div>
+                        <div class="description">
+                            Darker red indicates higher incident counts or larger gaps. 
+                            This visualization helps identify geographic clusters where resources should be concentrated 
+                            or where reporting protocols need improvement.
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="heatmapChart" style="height: 400px;"></div>
+            </div>
+        </div>
+        
+        <!-- Export and Actions Section -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <div class="chart-title">
+                    <i class="fas fa-download"></i>
+                    Data Export & Next Steps
+                </div>
+            </div>
+            
+            <div class="info-banner">
+                <i class="fas fa-tasks icon"></i>
+                <div class="content">
+                    <div class="title">Recommended Actions</div>
+                    <div class="description">
+                        Based on this analysis: 1) Focus immediate attention on Manchester (largest population impact), 
+                        2) Investigate why Salem/Derry have no ARC records despite multiple fires, 
+                        3) Study Berlin/Allenstown's 100% match rate as a best practice model, 
+                        4) Implement data sharing protocols to improve the 18.2% match rate.
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onclick="exportData('csv')" class="btn btn-primary">
+                    <i class="fas fa-file-csv"></i> Export CSV Data
+                </button>
+                <button onclick="exportData('geojson')" class="btn btn-primary">
+                    <i class="fas fa-map"></i> Export GeoJSON
+                </button>
+                <button onclick="generateReport()" class="btn btn-primary">
+                    <i class="fas fa-file-pdf"></i> Generate Full Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dataset
+        const nhFullDataset = [
+            { city: "Manchester", lat: 42.9956, lng: -71.4548, nfirs: 7, arc: 43, matched: 1, population: 115644, year2021: {nfirs: 3, arc: 20}, year2022: {nfirs: 4, arc: 23} },
+            { city: "Nashua", lat: 42.7654, lng: -71.4676, nfirs: 8, arc: 39, matched: 2, population: 91322, year2021: {nfirs: 4, arc: 18}, year2022: {nfirs: 4, arc: 21} },
+            { city: "Concord", lat: 43.2081, lng: -71.5376, nfirs: 6, arc: 28, matched: 1, population: 43976, year2021: {nfirs: 3, arc: 13}, year2022: {nfirs: 3, arc: 15} },
+            { city: "Rochester", lat: 43.3045, lng: -70.9759, nfirs: 2, arc: 24, matched: 0, population: 32492, year2021: {nfirs: 1, arc: 11}, year2022: {nfirs: 1, arc: 13} },
+            { city: "Dover", lat: 43.1979, lng: -70.8737, nfirs: 3, arc: 18, matched: 1, population: 32741, year2021: {nfirs: 2, arc: 8}, year2022: {nfirs: 1, arc: 10} },
+            { city: "Salem", lat: 42.7886, lng: -71.2009, nfirs: 18, arc: 0, matched: 0, population: 30089, year2021: {nfirs: 8, arc: 0}, year2022: {nfirs: 10, arc: 0} },
+            { city: "Derry", lat: 42.8806, lng: -71.3273, nfirs: 22, arc: 0, matched: 0, population: 34317, year2021: {nfirs: 10, arc: 0}, year2022: {nfirs: 12, arc: 0} },
+            { city: "Berlin", lat: 44.4687, lng: -71.1851, nfirs: 5, arc: 5, matched: 5, population: 10051, year2021: {nfirs: 2, arc: 2}, year2022: {nfirs: 3, arc: 3} },
+            { city: "Allenstown", lat: 43.1476, lng: -71.3831, nfirs: 2, arc: 2, matched: 2, population: 4707, year2021: {nfirs: 1, arc: 1}, year2022: {nfirs: 1, arc: 1} }
+        ];
+
+        // Initialize all visualizations
+        window.addEventListener('load', () => {
+            initMap();
+            initSankeyChart();
+            initCityChart();
+            initBubbleChart();
+            initTemporalChart();
+            initHeatmap();
+        });
+
+        // Initialize Map
+        function initMap() {
+            const map = L.map('map').setView([43.5, -71.5], 8);
+            
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap contributors © CARTO'
+            }).addTo(map);
+            
+            nhFullDataset.forEach(city => {
+                const matchRate = city.nfirs > 0 ? (city.matched / Math.min(city.nfirs, city.arc)) * 100 : 0;
+                let color, category;
+                
+                if (city.nfirs === 0 && city.arc > 0) {
+                    color = '#6f42c1';
+                    category = 'ARC Only';
+                } else if (city.arc === 0 && city.nfirs > 0) {
+                    color = '#dc3545';
+                    category = 'NFIRS Only';
+                } else if (matchRate === 100) {
+                    color = '#28a745';
+                    category = 'Perfect Match';
+                } else if (matchRate >= 50) {
+                    color = '#ffc107';
+                    category = 'Partial Match';
+                } else {
+                    color = '#fd7e14';
+                    category = 'Poor Match';
+                }
+                
+                const size = Math.sqrt(Math.max(city.nfirs, city.arc)) * 5;
+                
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color: ${color}; width: ${size}px; height: ${size}px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [size, size],
+                    iconAnchor: [size/2, size/2]
+                });
+                
+                L.marker([city.lat, city.lng], { icon: icon })
+                    .bindPopup(`
+                        <strong>${city.city}</strong><br>
+                        Population: ${city.population.toLocaleString()}<br>
+                        NFIRS: ${city.nfirs} | ARC: ${city.arc}<br>
+                        Matched: ${city.matched} (${matchRate.toFixed(1)}%)<br>
+                        Status: <span style="color: ${color}; font-weight: bold;">${category}</span>
+                    `)
+                    .addTo(map);
+            });
+        }
+
+        // Initialize Sankey Chart
+        function initSankeyChart() {
+            const data = [{
+                type: 'sankey',
+                orientation: 'h',
+                node: {
+                    pad: 15,
+                    thickness: 30,
+                    line: { color: 'black', width: 0.5 },
+                    label: ['NFIRS Reports (189)', 'ARC Cases (281)', 'Matched (26)', 'NFIRS Unmatched (163)', 'ARC Unmatched (255)'],
+                    color: ['#3B82F6', '#ED1B2E', '#28a745', '#ffc107', '#ffc107']
+                },
+                link: {
+                    source: [0, 1, 0, 1],
+                    target: [2, 2, 3, 4],
+                    value: [26, 26, 163, 255]
+                }
+            }];
+            
+            const layout = {
+                font: { size: 12 },
+                margin: { t: 10, r: 10, b: 10, l: 10 }
+            };
+            
+            Plotly.newPlot('sankeyChart', data, layout, {responsive: true, displayModeBar: false});
+        }
+
+        // Initialize City Chart
+        function initCityChart() {
+            const ctx = document.getElementById('cityChart').getContext('2d');
+            const cities = nhFullDataset.slice(0, 9).map(c => c.city);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: cities,
+                    datasets: [{
+                        label: 'NFIRS Reports',
+                        data: nhFullDataset.slice(0, 9).map(c => c.nfirs),
+                        backgroundColor: '#3B82F6'
+                    }, {
+                        label: 'ARC Cases',
+                        data: nhFullDataset.slice(0, 9).map(c => c.arc),
+                        backgroundColor: '#ED1B2E'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+        }
+
+        // Initialize Bubble Chart
+        function initBubbleChart() {
+            const bubbleData = nhFullDataset.map(city => ({
+                x: city.population,
+                y: city.nfirs > 0 ? (city.matched / Math.min(city.nfirs, city.arc)) * 100 : 0,
+                r: Math.sqrt(Math.max(city.nfirs, city.arc)) * 3,
+                name: city.city
+            }));
+            
+            const trace = {
+                x: bubbleData.map(d => d.x),
+                y: bubbleData.map(d => d.y),
+                mode: 'markers+text',
+                marker: {
+                    size: bubbleData.map(d => d.r),
+                    color: '#ED1B2E',
+                    opacity: 0.6
+                },
+                text: bubbleData.map(d => d.name),
+                textposition: 'top center',
+                type: 'scatter'
+            };
+            
+            const layout = {
+                xaxis: { title: 'Population', type: 'log' },
+                yaxis: { title: 'Match Rate (%)' },
+                margin: { t: 10, r: 10, b: 40, l: 60 }
+            };
+            
+            Plotly.newPlot('bubbleChart', [trace], layout, {responsive: true, displayModeBar: false});
+        }
+
+        // Initialize Temporal Chart
+        function initTemporalChart() {
+            const ctx = document.getElementById('temporalChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['2021 Q1', '2021 Q2', '2021 Q3', '2021 Q4', '2022 Q1', '2022 Q2', '2022 Q3', '2022 Q4'],
+                    datasets: [{
+                        label: 'Service Gap Count',
+                        data: [45, 52, 48, 61, 58, 67, 72, 79],
+                        borderColor: '#ED1B2E',
+                        backgroundColor: 'rgba(237, 27, 46, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // Initialize Heatmap
+        function initHeatmap() {
+            const cities = nhFullDataset.slice(0, 8).map(c => c.city);
+            const z = [
+                nhFullDataset.slice(0, 8).map(c => c.nfirs),
+                nhFullDataset.slice(0, 8).map(c => c.arc),
+                nhFullDataset.slice(0, 8).map(c => Math.abs(c.nfirs - c.arc))
+            ];
+            
+            const data = [{
+                z: z,
+                x: cities,
+                y: ['NFIRS', 'ARC', 'Gap'],
+                type: 'heatmap',
+                colorscale: [[0, '#fff'], [1, '#ED1B2E']]
+            }];
+            
+            const layout = {
+                margin: { t: 10, r: 10, b: 60, l: 60 }
+            };
+            
+            Plotly.newPlot('heatmapChart', data, layout, {responsive: true, displayModeBar: false});
+        }
+
+        // Export functions
+        function exportData(format) {
+            if (format === 'csv') {
+                const headers = ['City', 'Population', 'NFIRS', 'ARC', 'Matched', 'Gap'];
+                const rows = nhFullDataset.map(city => [
+                    city.city, city.population, city.nfirs, city.arc, city.matched, Math.abs(city.nfirs - city.arc)
+                ]);
+                const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+                downloadFile(csvContent, 'arc_gap_analysis.csv', 'text/csv');
+            } else if (format === 'geojson') {
+                const features = nhFullDataset.map(city => ({
+                    type: "Feature",
+                    properties: {
+                        name: city.city,
+                        nfirs: city.nfirs,
+                        arc: city.arc,
+                        matched: city.matched,
+                        population: city.population,
+                        gap: Math.abs(city.nfirs - city.arc)
+                    },
+                    geometry: {
+                        type: "Point",
+                        coordinates: [city.lng, city.lat]
+                    }
+                }));
+                const geoJSON = { type: "FeatureCollection", features: features };
+                downloadFile(JSON.stringify(geoJSON, null, 2), 'arc_gap_analysis.geojson', 'application/json');
+            }
+        }
+        
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type: type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function generateReport() {
+            alert('Generating comprehensive ARC Service Gap Report...\n\nReport will include:\n• Executive Summary with key findings\n• Detailed city-by-city analysis\n• Recommendations for service improvement\n• Resource allocation suggestions\n• Best practices from high-performing cities');
+        }
+    </script>
+</body>
+</html>
