@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>American Red Cross | NFIRS/ARC Service Gap Analysis</title>
+    
+    <!-- Leaflet for mapping -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Leaflet plugins -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Plotly -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --arc-red: #ED1B2E;
+            --arc-dark-red: #B51E2B;
+            --arc-light-gray: #F5F5F5;
+            --arc-medium-gray: #D0D0D0;
+            --arc-dark-gray: #6D6E70;
+            --arc-black: #231F20;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background: var(--arc-light-gray);
+            color: var(--arc-black);
+            line-height: 1.6;
+        }
+        
+        /* Header */
+        .header {
+            background: white;
+            border-bottom: 4px solid var(--arc-red);
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .arc-logo {
+            width: 60px;
+            height: 60px;
+            background: var(--arc-red);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 24px;
+        }
+        
+        .header h1 {
+            color: var(--arc-red);
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .header .subtitle {
+            color: var(--arc-dark-gray);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        
+        /* Layout */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 120px);
+            position: relative;
+        }
+        
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            width: 380px;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .control-section {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--arc-medium-gray);
+        }
+        
+        .control-section:last-child {
+            border-bottom: none;
+        }
+        
+        .section-title {
+            color: var(--arc-red);
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Statistics Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: var(--arc-light-gray);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--arc-medium-gray);
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--arc-red);
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: var(--arc-dark-gray);
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+        
+        /* Layer Controls */
+        .layer-control {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: var(--arc-light-gray);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .layer-control:hover {
+            background: var(--arc-medium-gray);
+        }
+        
+        .layer-control input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            accent-color: var(--arc-red);
+        }
+        
+        .color-indicator {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-primary {
+            background: var(--arc-red);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--arc-dark-red);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: var(--arc-red);
+            border: 2px solid var(--arc-red);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--arc-red);
+            color: white;
+        }
+        
+        .btn-full {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        /* Filters */
+        .filter-group {
+            margin-bottom: 15px;
+        }
+        
+        .filter-label {
+            font-size: 12px;
+            color: var(--arc-dark-gray);
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: var(--arc-medium-gray);
+            outline: none;
+            border-radius: 3px;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--arc-red);
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        
+        .slider-value {
+            display: inline-block;
+            margin-left: 10px;
+            color: var(--arc-red);
+            font-weight: bold;
+        }
+        
+        /* Bottom Stats Bar */
+        .stats-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            border: 2px solid var(--arc-red);
+            z-index: 1000;
+        }
+        
+        .stats-bar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, auto);
+            gap: 30px;
+            align-items: center;
+        }
+        
+        .stats-bar-item {
+            text-align: center;
+        }
+        
+        .stats-bar-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--arc-red);
+        }
+        
+        .stats-bar-label {
+            font-size: 10px;
+            color: var(--arc-dark-gray);
+            text-transform: uppercase;
+        }
+        
+        /* Popup Styles */
+        .leaflet-popup-content {
+            min-width: 280px;
+            padding: 0;
+        }
+        
+        .popup-header {
+            background: var(--arc-red);
+            color: white;
+            padding: 12px 15px;
+            margin: -14px -20px 15px -20px;
+        }
+        
+        .popup-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .popup-body {
+            padding: 0 15px 15px 15px;
+        }
+        
+        .popup-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--arc-light-gray);
+        }
+        
+        .popup-stat:last-child {
+            border-bottom: none;
+        }
+        
+        .popup-label {
+            color: var(--arc-dark-gray);
+            font-size: 13px;
+        }
+        
+        .popup-value {
+            font-weight: bold;
+            color: var(--arc-black);
+        }
+        
+        .category-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 15px;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        
+        /* Time Slider */
+        .time-slider-container {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            border: 2px solid var(--arc-red);
+            z-index: 1000;
+            width: 450px;
+        }
+        
+        .time-slider-title {
+            color: var(--arc-red);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        /* Loading Spinner */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+        }
+        
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--arc-light-gray);
+            border-top: 4px solid var(--arc-red);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <div class="arc-logo">+</div>
+                <div>
+                    <h1>American Red Cross</h1>
+                    <div class="subtitle">NFIRS/ARC Service Gap Analysis | New Hampshire 2021-2022</div>
+                </div>
+            </div>
+            <div>
+                <button class="btn btn-secondary" onclick="window.open('https://www.redcross.org', '_blank')">
+                    <i class="fas fa-external-link-alt"></i> Visit RedCross.org
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Map -->
+        <div id="map"></div>
+        
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <!-- Statistics Section -->
+            <div class="control-section">
+                <div class="section-title">Key Metrics</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statCities">30</div>
+                        <div class="stat-label">Cities Analyzed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statNFIRS">189</div>
+                        <div class="stat-label">NFIRS Reports</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statARC">281</div>
+                        <div class="stat-label">ARC Cases</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statMatch">18.2%</div>
+                        <div class="stat-label">Match Rate</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Layer Controls -->
+            <div class="control-section">
+                <div class="section-title">Data Layers</div>
+                <div class="layer-control">
+                    <input type="checkbox" id="perfectMatch" checked onchange="toggleLayer('perfectMatch')">
+                    <span class="color-indicator" style="background: #28a745;"></span>
+                    <span>Perfect Match (100%)</span>
+                </div>
+                <div class="layer-control">
+                    <input type="checkbox" id="partialMatch" checked onchange="toggleLayer('partialMatch')">
+                    <span class="color-indicator" style="background: #ffc107;"></span>
+                    <span>Partial Match (50-99%)</span>
+                </div>
+                <div class="layer-control">
+                    <input type="checkbox" id="poorMatch" checked onchange="toggleLayer('poorMatch')">
+                    <span class="color-indicator" style="background: #fd7e14;"></span>
+                    <span>Poor Match (<50%)</span>
+                </div>
+                <div class="layer-control">
+                    <input type="checkbox" id="nfirsOnly" checked onchange="toggleLayer('nfirsOnly')">
+                    <span class="color-indicator" style="background: #dc3545;"></span>
+                    <span>NFIRS Only (No ARC)</span>
+                </div>
+                <div class="layer-control">
+                    <input type="checkbox" id="arcOnly" checked onchange="toggleLayer('arcOnly')">
+                    <span class="color-indicator" style="background: #6f42c1;"></span>
+                    <span>ARC Only (No NFIRS)</span>
+                </div>
+            </div>
+            
+            <!-- Analysis Tools -->
+            <div class="control-section">
+                <div class="section-title">Analysis Tools</div>
+                <div class="layer-control">
+                    <input type="checkbox" id="heatmap" onchange="toggleHeatmap()">
+                    <i class="fas fa-fire" style="color: var(--arc-red); margin-right: 10px;"></i>
+                    <span>Gap Severity Heatmap</span>
+                </div>
+                <div class="layer-control">
+                    <input type="checkbox" id="clustering" checked onchange="toggleClustering()">
+                    <i class="fas fa-layer-group" style="color: var(--arc-red); margin-right: 10px;"></i>
+                    <span>Cluster Analysis</span>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="control-section">
+                <div class="section-title">Filters</div>
+                <div class="filter-group">
+                    <div class="filter-label">Minimum Population:<span class="slider-value" id="popValue">0</span></div>
+                    <input type="range" min="0" max="100000" value="0" class="slider" id="populationFilter" onchange="filterByPopulation(this.value)">
+                </div>
+                <div class="filter-group">
+                    <div class="filter-label">Minimum Gap Count:<span class="slider-value" id="gapValue">0</span></div>
+                    <input type="range" min="0" max="50" value="0" class="slider" id="gapFilter" onchange="filterByGap(this.value)">
+                </div>
+            </div>
+            
+            <!-- Export Section -->
+            <div class="control-section">
+                <div class="section-title">Export Data</div>
+                <button onclick="exportData('csv')" class="btn btn-primary btn-full">
+                    <i class="fas fa-file-csv"></i> Export to CSV
+                </button>
+                <button onclick="exportData('geojson')" class="btn btn-primary btn-full">
+                    <i class="fas fa-map"></i> Export GeoJSON
+                </button>
+                <button onclick="generateReport()" class="btn btn-secondary btn-full">
+                    <i class="fas fa-file-pdf"></i> Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bottom Stats Bar -->
+    <div class="stats-bar">
+        <div class="stats-bar-grid">
+            <div class="stats-bar-item">
+                <div class="stats-bar-value">30</div>
+                <div class="stats-bar-label">Cities</div>
+            </div>
+            <div class="stats-bar-item">
+                <div class="stats-bar-value">189</div>
+                <div class="stats-bar-label">NFIRS</div>
+            </div>
+            <div class="stats-bar-item">
+                <div class="stats-bar-value">281</div>
+                <div class="stats-bar-label">ARC</div>
+            </div>
+            <div class="stats-bar-item">
+                <div class="stats-bar-value">26</div>
+                <div class="stats-bar-label">Matched</div>
+            </div>
+            <div class="stats-bar-item">
+                <div class="stats-bar-value" style="color: #dc3545;">297</div>
+                <div class="stats-bar-label">Gaps</div>
+            </div>
+            <div class="stats-bar-item">
+                <div class="stats-bar-value" style="color: #ffc107;">81.8%</div>
+                <div class="stats-bar-label">Gap Rate</div>
+            </div>
+            <div class="stats-bar-item">
+                <div class="stats-bar-value" id="visibleCities">30</div>
+                <div class="stats-bar-label">Visible</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Time Slider -->
+    <div class="time-slider-container">
+        <div class="time-slider-title">Time Period Analysis</div>
+        <input type="range" min="0" max="2" value="2" class="slider" id="timeSlider" style="width: 100%;" onchange="updateTimeFilter(this.value)">
+        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px;">
+            <span>2021</span>
+            <span id="timeLabel" style="font-weight: bold; color: var(--arc-red);">All Years</span>
+            <span>2022</span>
+        </div>
+    </div>
+
+    <script>
+        // Dataset with ARC instead of RC
+        const nhFullDataset = [
+            { city: "Manchester", lat: 42.9956, lng: -71.4548, nfirs: 7, arc: 43, matched: 1, population: 115644, year2021: {nfirs: 3, arc: 20}, year2022: {nfirs: 4, arc: 23} },
+            { city: "Nashua", lat: 42.7654, lng: -71.4676, nfirs: 8, arc: 39, matched: 2, population: 91322, year2021: {nfirs: 4, arc: 18}, year2022: {nfirs: 4, arc: 21} },
+            { city: "Concord", lat: 43.2081, lng: -71.5376, nfirs: 6, arc: 28, matched: 1, population: 43976, year2021: {nfirs: 3, arc: 13}, year2022: {nfirs: 3, arc: 15} },
+            { city: "Rochester", lat: 43.3045, lng: -70.9759, nfirs: 2, arc: 24, matched: 0, population: 32492, year2021: {nfirs: 1, arc: 11}, year2022: {nfirs: 1, arc: 13} },
+            { city: "Dover", lat: 43.1979, lng: -70.8737, nfirs: 3, arc: 18, matched: 1, population: 32741, year2021: {nfirs: 2, arc: 8}, year2022: {nfirs: 1, arc: 10} },
+            { city: "Keene", lat: 42.9337, lng: -72.2781, nfirs: 4, arc: 15, matched: 1, population: 23409, year2021: {nfirs: 2, arc: 7}, year2022: {nfirs: 2, arc: 8} },
+            { city: "Portsmouth", lat: 43.0718, lng: -70.7626, nfirs: 5, arc: 14, matched: 2, population: 23011, year2021: {nfirs: 3, arc: 6}, year2022: {nfirs: 2, arc: 8} },
+            { city: "Laconia", lat: 43.5279, lng: -71.4704, nfirs: 3, arc: 12, matched: 1, population: 16871, year2021: {nfirs: 1, arc: 5}, year2022: {nfirs: 2, arc: 7} },
+            { city: "Lebanon", lat: 43.6423, lng: -72.2518, nfirs: 2, arc: 11, matched: 0, population: 14282, year2021: {nfirs: 1, arc: 5}, year2022: {nfirs: 1, arc: 6} },
+            { city: "Claremont", lat: 43.3765, lng: -72.3465, nfirs: 1, arc: 10, matched: 0, population: 12949, year2021: {nfirs: 0, arc: 4}, year2022: {nfirs: 1, arc: 6} },
+            { city: "Berlin", lat: 44.4687, lng: -71.1851, nfirs: 5, arc: 5, matched: 5, population: 10051, year2021: {nfirs: 2, arc: 2}, year2022: {nfirs: 3, arc: 3} },
+            { city: "Allenstown", lat: 43.1476, lng: -71.3831, nfirs: 2, arc: 2, matched: 2, population: 4707, year2021: {nfirs: 1, arc: 1}, year2022: {nfirs: 1, arc: 1} },
+            { city: "Chichester", lat: 43.2523, lng: -71.4001, nfirs: 1, arc: 1, matched: 1, population: 2665, year2021: {nfirs: 0, arc: 0}, year2022: {nfirs: 1, arc: 1} },
+            { city: "Dunbarton", lat: 43.1076, lng: -71.5965, nfirs: 1, arc: 1, matched: 1, population: 3005, year2021: {nfirs: 1, arc: 1}, year2022: {nfirs: 0, arc: 0} },
+            { city: "Salem", lat: 42.7886, lng: -71.2009, nfirs: 18, arc: 0, matched: 0, population: 30089, year2021: {nfirs: 8, arc: 0}, year2022: {nfirs: 10, arc: 0} },
+            { city: "Derry", lat: 42.8806, lng: -71.3273, nfirs: 22, arc: 0, matched: 0, population: 34317, year2021: {nfirs: 10, arc: 0}, year2022: {nfirs: 12, arc: 0} },
+            { city: "Hudson", lat: 42.7651, lng: -71.4398, nfirs: 14, arc: 0, matched: 0, population: 25394, year2021: {nfirs: 6, arc: 0}, year2022: {nfirs: 8, arc: 0} },
+            { city: "Merrimack", lat: 42.8651, lng: -71.4934, nfirs: 16, arc: 0, matched: 0, population: 26632, year2021: {nfirs: 7, arc: 0}, year2022: {nfirs: 9, arc: 0} },
+            { city: "Londonderry", lat: 42.8651, lng: -71.3742, nfirs: 19, arc: 0, matched: 0, population: 25826, year2021: {nfirs: 9, arc: 0}, year2022: {nfirs: 10, arc: 0} },
+            { city: "Bedford", lat: 42.9465, lng: -71.5159, nfirs: 12, arc: 0, matched: 0, population: 23322, year2021: {nfirs: 5, arc: 0}, year2022: {nfirs: 7, arc: 0} },
+            { city: "Somersworth", lat: 43.2618, lng: -70.8656, nfirs: 0, arc: 8, matched: 0, population: 11766, year2021: {nfirs: 0, arc: 3}, year2022: {nfirs: 0, arc: 5} },
+            { city: "Franklin", lat: 43.4445, lng: -71.6473, nfirs: 0, arc: 7, matched: 0, population: 8741, year2021: {nfirs: 0, arc: 3}, year2022: {nfirs: 0, arc: 4} },
+            { city: "Exeter", lat: 42.9814, lng: -70.9478, nfirs: 0, arc: 9, matched: 0, population: 16049, year2021: {nfirs: 0, arc: 4}, year2022: {nfirs: 0, arc: 5} },
+            { city: "Hampton", lat: 42.9376, lng: -70.8389, nfirs: 0, arc: 6, matched: 0, population: 16214, year2021: {nfirs: 0, arc: 2}, year2022: {nfirs: 0, arc: 4} },
+            { city: "Milford", lat: 42.8354, lng: -71.6489, nfirs: 0, arc: 8, matched: 0, population: 16131, year2021: {nfirs: 0, arc: 3}, year2022: {nfirs: 0, arc: 5} },
+            { city: "Windham", lat: 42.8001, lng: -71.3045, nfirs: 10, arc: 3, matched: 1, population: 15817, year2021: {nfirs: 4, arc: 1}, year2022: {nfirs: 6, arc: 2} },
+            { city: "Hooksett", lat: 43.0976, lng: -71.4634, nfirs: 8, arc: 5, matched: 2, population: 14871, year2021: {nfirs: 3, arc: 2}, year2022: {nfirs: 5, arc: 3} },
+            { city: "Goffstown", lat: 43.0204, lng: -71.6003, nfirs: 9, arc: 4, matched: 2, population: 18577, year2021: {nfirs: 4, arc: 2}, year2022: {nfirs: 5, arc: 2} },
+            { city: "Conway", lat: 43.9790, lng: -71.1201, nfirs: 4, arc: 6, matched: 2, population: 9822, year2021: {nfirs: 2, arc: 3}, year2022: {nfirs: 2, arc: 3} },
+            { city: "Plymouth", lat: 43.7573, lng: -71.6881, nfirs: 2, arc: 5, matched: 1, population: 6682, year2021: {nfirs: 1, arc: 2}, year2022: {nfirs: 1, arc: 3} }
+        ];
+
+        let map;
+        let markers = [];
+        let markerCluster;
+        let heatmapLayer;
+        let layerGroups = {
+            perfectMatch: [],
+            partialMatch: [],
+            poorMatch: [],
+            nfirsOnly: [],
+            arcOnly: []
+        };
+        
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([43.5, -71.5], 8);
+            
+            // CartoDB Positron for clean, professional look
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap contributors © CARTO',
+                maxZoom: 19
+            }).addTo(map);
+            
+            // Initialize marker cluster
+            markerCluster = L.markerClusterGroup({
+                chunkedLoading: true,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: true,
+                zoomToBoundsOnClick: true,
+                iconCreateFunction: function(cluster) {
+                    const childCount = cluster.getChildCount();
+                    let c = ' marker-cluster-';
+                    if (childCount < 10) {
+                        c += 'small';
+                    } else if (childCount < 100) {
+                        c += 'medium';
+                    } else {
+                        c += 'large';
+                    }
+                    return new L.DivIcon({
+                        html: '<div style="background: #ED1B2E; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">' + childCount + '</div>',
+                        className: 'marker-cluster' + c,
+                        iconSize: new L.Point(40, 40)
+                    });
+                }
+            });
+            
+            // Add all markers
+            addMarkers();
+            map.addLayer(markerCluster);
+        }
+        
+        function categorizeCity(city) {
+            const matchRate = city.nfirs > 0 ? (city.matched / Math.min(city.nfirs, city.arc)) * 100 : 0;
+            
+            if (city.nfirs === 0 && city.arc > 0) {
+                return { category: 'arcOnly', color: '#6f42c1', label: 'ARC Only' };
+            } else if (city.arc === 0 && city.nfirs > 0) {
+                return { category: 'nfirsOnly', color: '#dc3545', label: 'NFIRS Only' };
+            } else if (matchRate === 100) {
+                return { category: 'perfectMatch', color: '#28a745', label: 'Perfect Match' };
+            } else if (matchRate >= 50) {
+                return { category: 'partialMatch', color: '#ffc107', label: 'Partial Match' };
+            } else {
+                return { category: 'poorMatch', color: '#fd7e14', label: 'Poor Match' };
+            }
+        }
+        
+        function addMarkers() {
+            nhFullDataset.forEach(city => {
+                const category = categorizeCity(city);
+                const size = Math.sqrt(Math.max(city.nfirs, city.arc)) * 5;
+                const matchRate = city.nfirs > 0 ? ((city.matched / Math.min(city.nfirs, city.arc)) * 100).toFixed(1) : 0;
+                
+                // Create custom icon
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color: ${category.color}; width: ${size}px; height: ${size}px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [size, size],
+                    iconAnchor: [size/2, size/2]
+                });
+                
+                // Create marker
+                const marker = L.marker([city.lat, city.lng], { icon: icon });
+                
+                // Add popup with Red Cross styling
+                marker.bindPopup(`
+                    <div class="popup-header">
+                        <h3>${city.city}</h3>
+                    </div>
+                    <div class="popup-body">
+                        <div class="popup-stat">
+                            <span class="popup-label">Population:</span>
+                            <span class="popup-value">${city.population.toLocaleString()}</span>
+                        </div>
+                        <div class="popup-stat">
+                            <span class="popup-label">NFIRS Reports:</span>
+                            <span class="popup-value">${city.nfirs}</span>
+                        </div>
+                        <div class="popup-stat">
+                            <span class="popup-label">ARC Cases:</span>
+                            <span class="popup-value">${city.arc}</span>
+                        </div>
+                        <div class="popup-stat">
+                            <span class="popup-label">Matched:</span>
+                            <span class="popup-value">${city.matched} (${matchRate}%)</span>
+                        </div>
+                        <div class="popup-stat">
+                            <span class="popup-label">Service Gap:</span>
+                            <span class="popup-value" style="color: #dc3545;">${Math.abs(city.nfirs - city.arc)}</span>
+                        </div>
+                        <span class="category-badge" style="background: ${category.color};">
+                            ${category.label}
+                        </span>
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #D0D0D0; font-size: 12px; color: #6D6E70;">
+                            <strong>2021:</strong> NFIRS ${city.year2021.nfirs} | ARC ${city.year2021.arc}<br>
+                            <strong>2022:</strong> NFIRS ${city.year2022.nfirs} | ARC ${city.year2022.arc}
+                        </div>
+                    </div>
+                `);
+                
+                // Store marker data
+                marker.cityData = city;
+                marker.category = category.category;
+                
+                // Add to layer group
+                layerGroups[category.category].push(marker);
+                markerCluster.addLayer(marker);
+                markers.push(marker);
+            });
+        }
+        
+        function toggleLayer(layerName) {
+            const isChecked = document.getElementById(layerName).checked;
+            
+            layerGroups[layerName].forEach(marker => {
+                if (isChecked) {
+                    markerCluster.addLayer(marker);
+                } else {
+                    markerCluster.removeLayer(marker);
+                }
+            });
+            
+            updateVisibleCount();
+        }
+        
+        function toggleHeatmap() {
+            const isChecked = document.getElementById('heatmap').checked;
+            
+            if (isChecked) {
+                const heatData = nhFullDataset.map(city => {
+                    const gap = Math.abs(city.nfirs - city.arc);
+                    const intensity = gap / 50;
+                    return [city.lat, city.lng, intensity];
+                });
+                
+                heatmapLayer = L.heatLayer(heatData, {
+                    radius: 25,
+                    blur: 15,
+                    maxZoom: 10,
+                    gradient: {
+                        0.0: 'green',
+                        0.3: 'yellow',
+                        0.6: 'orange',
+                        0.8: '#ED1B2E',
+                        1.0: '#B51E2B'
+                    }
+                }).addTo(map);
+            } else {
+                if (heatmapLayer) {
+                    map.removeLayer(heatmapLayer);
+                }
+            }
+        }
+        
+        function toggleClustering() {
+            const isChecked = document.getElementById('clustering').checked;
+            
+            if (isChecked) {
+                map.addLayer(markerCluster);
+            } else {
+                map.removeLayer(markerCluster);
+                markers.forEach(marker => {
+                    if (document.getElementById(marker.category).checked) {
+                        marker.addTo(map);
+                    }
+                });
+            }
+        }
+        
+        function filterByPopulation(minPop) {
+            document.getElementById('popValue').textContent = parseInt(minPop).toLocaleString();
+            
+            markers.forEach(marker => {
+                if (marker.cityData.population < minPop) {
+                    markerCluster.removeLayer(marker);
+                } else if (document.getElementById(marker.category).checked) {
+                    markerCluster.addLayer(marker);
+                }
+            });
+            
+            updateVisibleCount();
+        }
+        
+        function filterByGap(minGap) {
+            document.getElementById('gapValue').textContent = minGap;
+            
+            markers.forEach(marker => {
+                const gap = Math.abs(marker.cityData.nfirs - marker.cityData.arc);
+                if (gap < minGap) {
+                    markerCluster.removeLayer(marker);
+                } else if (document.getElementById(marker.category).checked) {
+                    markerCluster.addLayer(marker);
+                }
+            });
+            
+            updateVisibleCount();
+        }
+        
+        function updateTimeFilter(value) {
+            const labels = ['2021', 'All Years', '2022'];
+            document.getElementById('timeLabel').textContent = labels[value];
+            
+            markers.forEach(marker => {
+                let show = true;
+                const city = marker.cityData;
+                
+                if (value == 0) {
+                    show = city.year2021.nfirs > 0 || city.year2021.arc > 0;
+                } else if (value == 2) {
+                    show = city.year2022.nfirs > 0 || city.year2022.arc > 0;
+                }
+                
+                if (show && document.getElementById(marker.category).checked) {
+                    markerCluster.addLayer(marker);
+                } else {
+                    markerCluster.removeLayer(marker);
+                }
+            });
+            
+            updateVisibleCount();
+        }
+        
+        function updateVisibleCount() {
+            let count = 0;
+            markers.forEach(marker => {
+                if (markerCluster.hasLayer(marker)) {
+                    count++;
+                }
+            });
+            document.getElementById('visibleCities').textContent = count;
+        }
+        
+        function exportData(format) {
+            if (format === 'csv') {
+                const headers = ['City', 'Latitude', 'Longitude', 'Population', 'NFIRS', 'ARC_Cases', 'Matched', 'Match_Rate', 'Category', 'Gap_Count'];
+                const rows = nhFullDataset.map(city => {
+                    const category = categorizeCity(city);
+                    const matchRate = city.nfirs > 0 ? ((city.matched / Math.min(city.nfirs, city.arc)) * 100).toFixed(1) : 0;
+                    return [
+                        city.city, city.lat, city.lng, city.population,
+                        city.nfirs, city.arc, city.matched, matchRate,
+                        category.label, Math.abs(city.nfirs - city.arc)
+                    ];
+                });
+                
+                const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+                downloadFile(csvContent, 'nh_arc_gap_analysis.csv', 'text/csv');
+                
+            } else if (format === 'geojson') {
+                const features = nhFullDataset.map(city => {
+                    const category = categorizeCity(city);
+                    return {
+                        type: "Feature",
+                        properties: {
+                            name: city.city,
+                            nfirs: city.nfirs,
+                            arc: city.arc,
+                            matched: city.matched,
+                            population: city.population,
+                            category: category.label,
+                            gap: Math.abs(city.nfirs - city.arc)
+                        },
+                        geometry: {
+                            type: "Point",
+                            coordinates: [city.lng, city.lat]
+                        }
+                    };
+                });
+                
+                const geoJSON = {
+                    type: "FeatureCollection",
+                    features: features
+                };
+                
+                downloadFile(JSON.stringify(geoJSON, null, 2), 'nh_arc_gap_analysis.geojson', 'application/json');
+            }
+        }
+        
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type: type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function generateReport() {
+            alert('Generating American Red Cross Service Gap Report...\n\nThis report will include:\n• Executive Summary\n• Service Gap Analysis\n• Geographic Distribution\n• Recommendations for ARC Response Teams\n• Resource Allocation Suggestions');
+        }
+        
+        // Initialize map on load
+        window.addEventListener('load', initMap);
+    </script>
+</body>
+</html>
